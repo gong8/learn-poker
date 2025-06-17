@@ -31,7 +31,7 @@ export interface DeckTracker {
 }
 
 export interface DrawInfo {
-  type: 'flush' | 'straight' | 'gutshot' | 'two-pair' | 'trips' | 'full-house' | 'none' | 'backdoor-flush' | 'double-gutshot' | 'pair';
+  type: 'flush' | 'straight' | 'gutshot' | 'two-pair' | 'trips' | 'full-house' | 'improve' | 'backdoor-flush' | 'double-gutshot' | 'pair' | 'flush-draw' | 'open-ended';
   outs: number;
   probability: number;
   description: string;
@@ -44,7 +44,7 @@ export interface PlayerAnalysis {
   potOdds: number;
   equity: number;
   expectedValue: number;
-  recommendation: 'fold' | 'call' | 'raise' | 'all-in';
+  recommendation: 'fold' | 'call' | 'check' | 'bet' | 'raise' | 'all-in';
   confidence: number;
   outs: number;
   draws: DrawInfo[];
@@ -69,6 +69,17 @@ export interface HandSummary {
   isWinner: boolean;
 }
 
+export interface HandHistoryEntry {
+  handNumber: number;
+  timestamp: number;
+  phase: GamePhase;
+  communityCards: Card[];
+  pot: number;
+  summaries: HandSummary[];
+  chipChanges: ChipChange[];
+  winnerIds: string[];
+}
+
 export interface GameState {
   players: Player[];
   communityCards: Card[];
@@ -86,4 +97,6 @@ export interface GameState {
   deckTracker: DeckTracker;
   lastHandChipChanges: ChipChange[];
   lastHandSummaries: HandSummary[];
+  handHistory: HandHistoryEntry[];
+  handNumber: number;
 }

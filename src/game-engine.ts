@@ -1,4 +1,4 @@
-import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary } from './types';
+import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary, HandHistoryEntry } from './types';
 import { createDeck, evaluateHand, getHandTypeDisplayName } from './poker-logic';
 import { createDeckTracker, updateDeckTracker } from './card-analysis';
 
@@ -49,7 +49,9 @@ export function createInitialGameState(playerCount: number, botCount: number): G
     isGameActive: false,
     deckTracker: createDeckTracker(),
     lastHandChipChanges: [],
-    lastHandSummaries: []
+    lastHandSummaries: [],
+    handHistory: [],
+    handNumber: 0
   };
 }
 
@@ -65,6 +67,7 @@ export function startNewHand(gameState: GameState): GameState {
   newState.deckTracker = createDeckTracker();
   newState.lastHandChipChanges = [];
   newState.lastHandSummaries = [];
+  newState.handNumber += 1;
   
   newState.dealerIndex = (newState.dealerIndex + 1) % newState.players.length;
   newState.smallBlindIndex = (newState.dealerIndex + 1) % newState.players.length;
@@ -174,12 +177,23 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       
     case 'all-in':
       const allInAmount = currentPlayer.chips;
+      const previousBet = currentPlayer.currentBet;
       currentPlayer.chips = 0;
       currentPlayer.currentBet += allInAmount;
       currentPlayer.totalContribution += allInAmount;
       newState.pot += allInAmount;
+      const wasRaise = currentPlayer.currentBet > newState.currentBet;
       newState.currentBet = Math.max(newState.currentBet, currentPlayer.currentBet);
       currentPlayer.isAllIn = true;
+      
+      // If this all-in is a raise, reset hasActedInRound for other players
+      if (wasRaise) {
+        newState.players.forEach((player, index) => {
+          if (index !== newState.currentPlayerIndex && !player.isFolded && !player.isAllIn) {
+            player.hasActedInRound = false;
+          }
+        });
+      }
       break;
   }
   
@@ -194,15 +208,18 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
 
 function moveToNextPlayer(gameState: GameState): void {
   let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+  let attempts = 0;
+  const maxAttempts = gameState.players.length;
   
-  while (gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn) {
+  while (attempts < maxAttempts && (gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn)) {
     nextIndex = (nextIndex + 1) % gameState.players.length;
-    
-    if (nextIndex === gameState.currentPlayerIndex) {
-      // All players are folded or all-in, no one can act
-      gameState.currentPlayerIndex = -1;
-      return;
-    }
+    attempts++;
+  }
+  
+  // If we've gone through all players and none can act, set currentPlayerIndex to -1
+  if (attempts >= maxAttempts || gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn) {
+    gameState.currentPlayerIndex = -1;
+    return;
   }
   
   gameState.currentPlayerIndex = nextIndex;
@@ -218,6 +235,12 @@ function isRoundComplete(gameState: GameState): boolean {
   
   // If no valid current player exists (all are folded/all-in), round is complete
   if (gameState.currentPlayerIndex < 0) {
+    return true;
+  }
+  
+  // Special case: if all active players are all-in, round is complete
+  const allActivePlayersAllIn = activePlayers.every(p => p.isAllIn);
+  if (allActivePlayersAllIn) {
     return true;
   }
   
@@ -311,6 +334,7 @@ function determineWinner(gameState: GameState): void {
     // Ensure unique winner ID to prevent duplicate trophies
     const uniqueWinnerIds = Array.from(new Set([activePlayers[0].id]));
     calculateHandSummaries(gameState, uniqueWinnerIds);
+    addToHandHistory(gameState, uniqueWinnerIds);
     return;
   }
   
@@ -351,6 +375,7 @@ function determineWinner(gameState: GameState): void {
   // Ensure unique winner IDs to prevent duplicate trophies
   const uniqueWinnerIds = Array.from(new Set(allWinnerIds));
   calculateHandSummaries(gameState, uniqueWinnerIds);
+  addToHandHistory(gameState, uniqueWinnerIds);
 }
 
 function calculateSidePots(gameState: GameState): Array<{ amount: number; eligiblePlayerIds: string[] }> {
@@ -427,6 +452,26 @@ function calculateHandSummaries(gameState: GameState, winnerIds: string[]): void
       if (!a.isWinner && b.isWinner) return 1;
       return 0;
     });
+}
+
+function addToHandHistory(gameState: GameState, winnerIds: string[]): void {
+  const historyEntry: HandHistoryEntry = {
+    handNumber: gameState.handNumber,
+    timestamp: Date.now(),
+    phase: 'showdown',
+    communityCards: [...gameState.communityCards],
+    pot: gameState.lastHandChipChanges.reduce((sum, change) => sum + change.totalBet, 0),
+    summaries: [...gameState.lastHandSummaries],
+    chipChanges: [...gameState.lastHandChipChanges],
+    winnerIds: [...winnerIds]
+  };
+  
+  gameState.handHistory.unshift(historyEntry); // Add to beginning for newest first
+  
+  // Keep only last 50 hands to prevent memory issues
+  if (gameState.handHistory.length > 50) {
+    gameState.handHistory = gameState.handHistory.slice(0, 50);
+  }
 }
 
 export function getValidActions(gameState: GameState, playerIndex: number): Action[] {

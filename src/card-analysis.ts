@@ -143,11 +143,26 @@ export function calculateAdvancedOuts(playerCards: Card[], communityCards: Card[
     }
     
     if (improveOuts > 0) {
+      const handRank = currentHand.rank;
+      let improvementDescription = '';
+      
+      if (handRank === 'high-card') {
+        improvementDescription = `${improveOuts} cards to make a pair or better`;
+      } else if (handRank === 'pair') {
+        improvementDescription = `${improveOuts} cards to make two pair, trips, or better`;
+      } else if (handRank === 'two-pair') {
+        improvementDescription = `${improveOuts} cards to make a full house or better`;
+      } else if (handRank === 'three-of-a-kind') {
+        improvementDescription = `${improveOuts} cards to make a full house or quads`;
+      } else {
+        improvementDescription = `${improveOuts} cards to improve current ${handRank.replace('-', ' ')}`;
+      }
+      
       draws.push({
-        type: 'none',
+        type: 'improve',
         outs: improveOuts,
         probability: (improveOuts / deckTracker.remainingCards.length) * 100,
-        description: `${improveOuts} cards to improve`
+        description: improvementDescription
       });
     }
     
@@ -159,25 +174,26 @@ export function calculateAdvancedOuts(playerCards: Card[], communityCards: Card[
   const straightDraws = analyzeStraightDraw(playerCards, communityCards, deckTracker);
   const pairDraws = analyzePairDraw(playerCards, communityCards, deckTracker);
   
-  // Add all flush draws
-  flushDraws.forEach(draw => {
-    draws.push(draw);
-    totalOuts += draw.outs;
+  // Add all draws but avoid double-counting outs
+  const allDraws = [...flushDraws, ...straightDraws, ...pairDraws];
+  
+  // Sort by probability (highest first)
+  allDraws.sort((a, b) => b.probability - a.probability);
+  
+  // Calculate total unique outs (approximate since some outs might overlap)
+  let uniqueOuts = 0;
+  const countedRanks = new Set<string>();
+  
+  allDraws.forEach(draw => {
+    if (draw.type.includes('flush')) {
+      uniqueOuts += Math.min(draw.outs, 9); // Max 9 flush outs
+    } else {
+      // For straight draws, estimate non-overlapping outs
+      uniqueOuts += Math.min(draw.outs, 8); // Max 8 straight outs
+    }
   });
   
-  // Add all straight draws
-  straightDraws.forEach(draw => {
-    draws.push(draw);
-    totalOuts += draw.outs;
-  });
-  
-  // Add all pair draws
-  pairDraws.forEach(draw => {
-    draws.push(draw);
-    totalOuts += draw.outs;
-  });
-  
-  return { outs: Math.min(totalOuts, 47), draws };
+  return { outs: Math.min(uniqueOuts, 21), draws: allDraws };
 }
 
 function analyzeFlushDraw(playerCards: Card[], communityCards: Card[], deckTracker: DeckTracker): DrawInfo[] {
@@ -189,7 +205,7 @@ function analyzeFlushDraw(playerCards: Card[], communityCards: Card[], deckTrack
     suitCounts.set(card.suit, (suitCounts.get(card.suit) || 0) + 1);
   });
   
-  // Check for 4-card flush draws
+  // Check for flush draws (4 cards of same suit)
   for (const [suit, count] of Array.from(suitCounts.entries())) {
     if (count === 4) {
       const remainingSuitCards = deckTracker.remainingCards.filter(card => card.suit === suit).length;
@@ -198,23 +214,45 @@ function analyzeFlushDraw(playerCards: Card[], communityCards: Card[], deckTrack
           type: 'flush',
           outs: remainingSuitCards,
           probability: (remainingSuitCards / deckTracker.remainingCards.length) * 100,
-          description: `Flush draw (${remainingSuitCards} ${suit}s remaining)`
+          description: `Flush draw - need 1 more ${suit}`
         });
       }
     }
   }
   
-  // Check for backdoor flush draws (3 cards of same suit)
+  // Check for near-flush draws (3 cards of same suit when we have 5+ total cards)
   for (const [suit, count] of Array.from(suitCounts.entries())) {
-    if (count === 3 && communityCards.length === 3) {
+    if (count === 3 && allCards.length >= 5) {
       const remainingSuitCards = deckTracker.remainingCards.filter(card => card.suit === suit).length;
       if (remainingSuitCards > 0) {
         draws.push({
-          type: 'backdoor-flush',
+          type: 'flush-draw' as const,
           outs: remainingSuitCards,
           probability: (remainingSuitCards / deckTracker.remainingCards.length) * 100,
-          description: `Backdoor flush draw (${remainingSuitCards} ${suit}s remaining)`
+          description: `Possible flush - need 2 more ${suit}s`
         });
+      }
+    }
+  }
+  
+  // Check for backdoor flush draws (3 cards of same suit on flop)
+  if (communityCards.length === 3) {
+    for (const [suit, count] of Array.from(suitCounts.entries())) {
+      if (count === 3) {
+        const remainingSuitCards = deckTracker.remainingCards.filter(card => card.suit === suit).length;
+        if (remainingSuitCards >= 2) {
+          // Calculate probability of hitting both turn and river
+          const turnProb = remainingSuitCards / deckTracker.remainingCards.length;
+          const riverProb = (remainingSuitCards - 1) / (deckTracker.remainingCards.length - 1);
+          const backdoorProb = turnProb * riverProb * 100;
+          
+          draws.push({
+            type: 'backdoor-flush',
+            outs: remainingSuitCards,
+            probability: backdoorProb,
+            description: `Backdoor flush draw - need both turn and river ${suit}s`
+          });
+        }
       }
     }
   }
@@ -230,81 +268,66 @@ function analyzeStraightDraw(playerCards: Card[], communityCards: Card[], deckTr
   
   if (uniqueRanks.length < 3) return draws;
   
-  // Check for open-ended straight draws
-  for (let i = 0; i <= uniqueRanks.length - 3; i++) {
-    const sequence = uniqueRanks.slice(i, i + 3);
-    if (sequence[1] - sequence[0] === 1 && sequence[2] - sequence[1] === 1) {
-      const lowEnd = sequence[0] - 1;
-      const highEnd = sequence[2] + 1;
-      let outs = 0;
-      
-      if (lowEnd >= 2) {
-        outs += deckTracker.remainingCards.filter(card => getRankValue(card.rank) === lowEnd).length;
-      }
-      if (highEnd <= 14) {
-        outs += deckTracker.remainingCards.filter(card => getRankValue(card.rank) === highEnd).length;
-      }
-      
-      if (outs > 0) {
-        draws.push({
-          type: 'straight',
-          outs,
-          probability: (outs / deckTracker.remainingCards.length) * 100,
-          description: `Open-ended straight draw (${outs} outs)`
-        });
-      }
-    }
-  }
+  // Find all possible straights and their missing cards
+  const foundDraws = new Set<string>();
   
-  // Check for gutshot straight draws
-  const foundGutshots = new Set<number>();
-  for (let i = 0; i < uniqueRanks.length; i++) {
-    for (let j = i + 1; j < uniqueRanks.length; j++) {
-      for (let k = j + 1; k < uniqueRanks.length; k++) {
-        const ranks3 = [uniqueRanks[i], uniqueRanks[j], uniqueRanks[k]];
-        
-        // Check for missing card in 4-card straight
-        for (let start = Math.max(2, ranks3[0] - 1); start <= Math.min(11, ranks3[2] + 1); start++) {
-          const targetStraight = [start, start + 1, start + 2, start + 3];
-          const missing = targetStraight.filter(rank => !ranks3.includes(rank));
+  // Check all possible 5-card straights (A-2-3-4-5 through 10-J-Q-K-A)
+  const straightStarts = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // 1 represents wheel straight (A-2-3-4-5)
+  
+  for (const start of straightStarts) {
+    let targetStraight: number[];
+    if (start === 1) {
+      targetStraight = [14, 2, 3, 4, 5]; // Wheel straight: A-2-3-4-5
+    } else {
+      targetStraight = [start, start + 1, start + 2, start + 3, start + 4];
+    }
+    
+    const matchingRanks = targetStraight.filter(rank => uniqueRanks.includes(rank));
+    const missingRanks = targetStraight.filter(rank => !uniqueRanks.includes(rank));
+    
+    if (matchingRanks.length >= 3 && missingRanks.length > 0 && missingRanks.length <= 2) {
+      let totalOuts = 0;
+      const missingRankNames: string[] = [];
+      
+      missingRanks.forEach(missingRank => {
+        const outs = deckTracker.remainingCards.filter(card => getRankValue(card.rank) === missingRank).length;
+        totalOuts += outs;
+        missingRankNames.push(getRankFromValue(missingRank));
+      });
+      
+      if (totalOuts > 0) {
+        const drawKey = `${missingRanks.sort().join('-')}`;
+        if (!foundDraws.has(drawKey)) {
+          foundDraws.add(drawKey);
           
-          if (missing.length === 1 && !foundGutshots.has(missing[0])) {
-            const missingRank = missing[0];
-            const outs = deckTracker.remainingCards.filter(card => getRankValue(card.rank) === missingRank).length;
+          let drawType: string;
+          let description: string;
+          
+          if (missingRanks.length === 1) {
+            // Check if it's open-ended or gutshot
+            const missingRank = missingRanks[0];
+            const isOpenEnded = (
+              (missingRank === targetStraight[0] || missingRank === targetStraight[4]) &&
+              matchingRanks.length === 4
+            );
             
-            if (outs > 0) {
-              foundGutshots.add(missingRank);
-              draws.push({
-                type: 'gutshot',
-                outs,
-                probability: (outs / deckTracker.remainingCards.length) * 100,
-                description: `Gutshot straight draw (${outs} outs to ${getRankFromValue(missingRank)})`
-              });
+            if (isOpenEnded) {
+              drawType = 'open-ended';
+              description = `Open-ended straight draw - need ${missingRankNames[0]}`;
+            } else {
+              drawType = 'gutshot';
+              description = `Inside straight draw - need ${missingRankNames[0]}`;
             }
+          } else {
+            drawType = 'double-gutshot';
+            description = `Double gutshot - need ${missingRankNames.join(' or ')}`;
           }
-        }
-      }
-    }
-  }
-  
-  // Check for double gutshot (two different cards complete a straight)
-  if (uniqueRanks.length >= 4) {
-    for (let start = 2; start <= 10; start++) {
-      const targetStraight = [start, start + 1, start + 2, start + 3, start + 4];
-      const missing = targetStraight.filter(rank => !uniqueRanks.includes(rank));
-      
-      if (missing.length === 2) {
-        let totalOuts = 0;
-        missing.forEach(missingRank => {
-          totalOuts += deckTracker.remainingCards.filter(card => getRankValue(card.rank) === missingRank).length;
-        });
-        
-        if (totalOuts > 0) {
+          
           draws.push({
-            type: 'double-gutshot',
+            type: drawType as 'open-ended' | 'gutshot' | 'double-gutshot',
             outs: totalOuts,
             probability: (totalOuts / deckTracker.remainingCards.length) * 100,
-            description: `Double gutshot (${totalOuts} outs to ${missing.map(getRankFromValue).join(' or ')})`
+            description
           });
         }
       }
@@ -450,12 +473,13 @@ export function calculateExpectedValue(
   return (winProbability * winAmount) - ((1 - winProbability) * loseAmount);
 }
 
-export function getRecommendation(analysis: PlayerAnalysis, validActions: string[]): 'fold' | 'call' | 'raise' | 'all-in' {
+export function getRecommendation(analysis: PlayerAnalysis, validActions: string[]): 'fold' | 'call' | 'check' | 'bet' | 'raise' | 'all-in' {
   const { handStrength, potentialStrength, equity, expectedValue, outs, draws, winProbability } = analysis;
   
   // Premium hands - always aggressive
   if (handStrength > 0.85 || equity > 0.8) {
     if (validActions.includes('raise')) return 'raise';
+    if (validActions.includes('bet')) return 'bet';
     if (validActions.includes('all-in')) return 'all-in';
     if (validActions.includes('call')) return 'call';
   }
@@ -463,6 +487,7 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
   // Strong hands with good potential
   if (handStrength > 0.7 || (potentialStrength > 0.8 && outs >= 8)) {
     if (validActions.includes('raise')) return 'raise';
+    if (validActions.includes('bet')) return 'bet';
     if (validActions.includes('call')) return 'call';
   }
   
@@ -500,7 +525,8 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
     if (validActions.includes('call')) return 'call';
   }
   
-  // Default to fold
+  // Default to fold or check if possible
+  if (validActions.includes('check')) return 'check';
   return 'fold';
 }
 
@@ -524,10 +550,37 @@ export function analyzePlayer(gameState: GameState, playerIndex: number): Player
       winProbability: 0
     };
   }
+
+  // Consider game context
+  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn);
+  const numberOfOpponents = activePlayers.length - 1;
+  const foldedPlayersCount = gameState.players.filter(p => p.isFolded).length;
   
-  const handStrength = calculateHandStrength(player.cards, gameState.communityCards);
-  const equity = calculateEquity(player.cards, gameState.communityCards, deckTracker);
+  let handStrength = calculateHandStrength(player.cards, gameState.communityCards);
+  let equity = calculateEquity(player.cards, gameState.communityCards, deckTracker);
   const { outs, draws } = calculateAdvancedOuts(player.cards, gameState.communityCards, deckTracker);
+
+  // Adjust for number of opponents - fewer opponents = higher relative strength
+  const opponentAdjustment = Math.max(0.8, 1 - (numberOfOpponents - 1) * 0.1);
+  handStrength *= opponentAdjustment;
+  equity *= opponentAdjustment;
+
+  // Evaluate community card strength and adjust accordingly
+  if (gameState.communityCards.length >= 3) {
+    const communityStrength = evaluateCommunityStrength(gameState.communityCards);
+    
+    // If community is very strong but player hand is weak, reduce confidence
+    if (communityStrength > 0.7 && handStrength < 0.4) {
+      handStrength *= 0.8;
+      equity *= 0.9;
+    }
+    
+    // If community is weak and player has decent cards, boost slightly
+    if (communityStrength < 0.3 && handStrength > 0.6) {
+      handStrength *= 1.1;
+      equity *= 1.05;
+    }
+  }
   
   const betToCall = gameState.currentBet - player.currentBet;
   const potOdds = calculatePotOdds(gameState.pot, betToCall);
@@ -550,10 +603,10 @@ export function analyzePlayer(gameState: GameState, playerIndex: number): Player
   
   // Determine current hand rank
   let currentHandRank = 'high-card';
-  if (player.cards.length === 2 && gameState.communityCards.length >= 3) {
+  if (player.cards.length === 2) {
     try {
       const allCards = [...player.cards, ...gameState.communityCards];
-      if (allCards.length >= 5) {
+      if (allCards.length >= 2) {
         const hand = evaluateHand(allCards);
         currentHandRank = hand.rank;
       }
@@ -581,6 +634,60 @@ export function analyzePlayer(gameState: GameState, playerIndex: number): Player
   analysis.recommendation = getRecommendation(analysis, validActions);
   
   return analysis;
+}
+
+function evaluateCommunityStrength(communityCards: Card[]): number {
+  if (communityCards.length < 3) return 0;
+  
+  const ranks = communityCards.map(card => getRankValue(card.rank));
+  const suits = communityCards.map(card => card.suit);
+  
+  let strength = 0;
+  
+  // Check for pairs/trips on board
+  const rankCounts = new Map<number, number>();
+  ranks.forEach(rank => {
+    rankCounts.set(rank, (rankCounts.get(rank) || 0) + 1);
+  });
+  
+  const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
+  if (counts[0] >= 3) strength += 0.8; // Trips on board
+  else if (counts[0] >= 2) strength += 0.5; // Pair on board
+  
+  // Check for flush possibilities
+  const suitCounts = new Map<string, number>();
+  suits.forEach(suit => {
+    suitCounts.set(suit, (suitCounts.get(suit) || 0) + 1);
+  });
+  
+  const maxSuitCount = Math.max(...Array.from(suitCounts.values()));
+  if (maxSuitCount >= 4) strength += 0.7; // Flush possible
+  else if (maxSuitCount >= 3) strength += 0.3; // Flush draw possible
+  
+  // Check for straight possibilities
+  const uniqueRanks = Array.from(new Set(ranks)).sort((a, b) => a - b);
+  if (uniqueRanks.length >= 3) {
+    let maxConsecutive = 1;
+    let currentConsecutive = 1;
+    
+    for (let i = 1; i < uniqueRanks.length; i++) {
+      if (uniqueRanks[i] - uniqueRanks[i - 1] === 1) {
+        currentConsecutive++;
+        maxConsecutive = Math.max(maxConsecutive, currentConsecutive);
+      } else {
+        currentConsecutive = 1;
+      }
+    }
+    
+    if (maxConsecutive >= 4) strength += 0.6; // Straight possible
+    else if (maxConsecutive >= 3) strength += 0.2; // Straight draw possible
+  }
+  
+  // Check for high cards
+  const highCardBonus = ranks.filter(rank => rank >= 11).length * 0.1;
+  strength += highCardBonus;
+  
+  return Math.min(strength, 1);
 }
 
 function getValidActionsForAnalysis(gameState: GameState, playerIndex: number): string[] {

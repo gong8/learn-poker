@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { PlayerAnalysis, DrawInfo } from '../types';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface PlayerAnalysisProps {
   analysis: PlayerAnalysis;
@@ -7,15 +8,17 @@ interface PlayerAnalysisProps {
 }
 
 const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisible }) => {
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const { settings } = useSettings();
   
   if (!isVisible) return null;
 
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
       case 'fold': return '#dc2626';
-      case 'call': return '#f59e0b';
-      case 'raise': return '#16a34a';
+      case 'call': return '#1d4ed8';
+      case 'check': return '#1d4ed8';
+      case 'bet': return '#d97706';
+      case 'raise': return '#d97706';
       case 'all-in': return '#7c3aed';
       default: return '#6b7280';
     }
@@ -79,17 +82,24 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisibl
         <div className="win-status">{getWinChance(analysis.winProbability)}</div>
       </div>
 
-      {/* Best Draw (if any) */}
-      {bestDraw && (
+      {/* Drawing Opportunities */}
+      {analysis.draws.length > 0 && (
         <div className="simple-analysis-card">
           <div className="analysis-header">
-            <span className="analysis-title">Best Draw</span>
-            <span className="analysis-value">{Math.round(bestDraw.probability)}%</span>
+            <span className="analysis-title">Drawing Opportunities</span>
+            <span className="analysis-value">{analysis.draws.length} found</span>
           </div>
-          <div className="draw-info">
-            <span className="draw-name">{bestDraw.type.replace('-', ' ')}</span>
-            <span className="draw-outs">({bestDraw.outs} cards help)</span>
-          </div>
+          {analysis.draws.slice(0, 3).map((draw, index) => (
+            <div key={index} className="draw-info" style={{ marginBottom: index < Math.min(analysis.draws.length - 1, 2) ? '6px' : '0' }}>
+              <span className="draw-name">{draw.type.replace('-', ' ')}</span>
+              <span className="draw-outs">({draw.outs} outs, {Math.round(draw.probability)}%)</span>
+            </div>
+          ))}
+          {analysis.draws.length > 3 && (
+            <div className="draw-info" style={{ marginTop: '6px', fontSize: '0.7rem', opacity: 0.7 }}>
+              +{analysis.draws.length - 3} more (see advanced analysis)
+            </div>
+          )}
         </div>
       )}
 
@@ -110,16 +120,8 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisibl
         )}
       </div>
 
-      {/* Advanced Analysis Toggle */}
-      <button 
-        className="advanced-toggle"
-        onClick={() => setShowAdvanced(!showAdvanced)}
-      >
-        {showAdvanced ? '▼ Hide Details' : '▶ Show Advanced Analysis'}
-      </button>
-
       {/* Advanced Analysis Panel */}
-      {showAdvanced && (
+      {settings.showAdvancedAnalysis && (
         <div className="advanced-analysis">
           <div className="advanced-section">
             <h4>Detailed Statistics</h4>

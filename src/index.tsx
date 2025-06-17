@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import PokerGame from './PokerGame';
+import { SettingsProvider } from './contexts/SettingsContext';
 import './styles.css';
 
 const container = document.getElementById('root');
@@ -9,4 +10,8 @@ if (!container) {
 }
 
 const root = createRoot(container);
-root.render(<PokerGame />);
+root.render(
+  <SettingsProvider>
+    <PokerGame />
+  </SettingsProvider>
+);

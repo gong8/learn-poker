@@ -27,9 +27,9 @@ const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSm
         <div className="player-chips">
           Chips: {player.chips}
         </div>
-        {player.currentBet > 0 && (
+        {player.totalContribution > 0 && (
           <div className="player-bet">
-            Bet: {player.currentBet}
+            This Hand: {player.totalContribution}
           </div>
         )}
         {player.isAllIn && (

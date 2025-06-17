@@ -9,11 +9,17 @@ import GameControls from './components/GameControls';
 import GameSetup from './components/GameSetup';
 import PlayerAnalysisPanel from './components/PlayerAnalysis';
 import HandSummaryComponent from './components/HandSummary';
+import SettingsModal from './components/SettingsModal';
+import HandHistory from './components/HandHistory';
+import { useSettings } from './contexts/SettingsContext';
 
 const PokerGame: React.FC = () => {
+  const { settings } = useSettings();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [showdown, setShowdown] = useState(false);
   const [playerAnalysis, setPlayerAnalysis] = useState<PlayerAnalysis | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showHandHistory, setShowHandHistory] = useState(false);
 
   const startGame = (botCount: number) => {
     const initialState = createInitialGameState(1, botCount);
@@ -47,6 +53,12 @@ const PokerGame: React.FC = () => {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
     if (currentPlayer && currentPlayer.isBot && !currentPlayer.isFolded && !currentPlayer.isAllIn) {
+      // Add safety check to prevent infinite loops
+      const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn);
+      if (activePlayers.length <= 1) {
+        return; // Hand should be ending, don't process more bot actions
+      }
+      
       const timer = setTimeout(() => {
         const botDecision = makeBotDecision(gameState, gameState.currentPlayerIndex);
         handlePlayerAction(botDecision.action, botDecision.betAmount);
@@ -62,8 +74,19 @@ const PokerGame: React.FC = () => {
     const humanPlayer = gameState.players.find(p => !p.isBot);
     if (humanPlayer) {
       const humanPlayerIndex = gameState.players.indexOf(humanPlayer);
+      const isHumanTurn = gameState.currentPlayerIndex === humanPlayerIndex;
       const analysis = analyzePlayer(gameState, humanPlayerIndex);
-      setPlayerAnalysis(analysis);
+      
+      // Only update recommendation if it's human's turn or if there's no current analysis
+      if (isHumanTurn || !playerAnalysis) {
+        setPlayerAnalysis(analysis);
+      } else {
+        // Keep the same recommendation but update other stats
+        setPlayerAnalysis(prev => prev ? {
+          ...analysis,
+          recommendation: prev.recommendation
+        } : analysis);
+      }
     }
   }, [gameState]);
 
@@ -89,7 +112,27 @@ const PokerGame: React.FC = () => {
   return (
     <div className="poker-game">
       <div className="game-header">
-        <h1>Texas Hold'em Poker</h1>
+        <div className="header-top">
+          <h1>Texas Hold'em Poker</h1>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {gameState && (
+              <button
+                className="history-button"
+                onClick={() => setShowHandHistory(true)}
+                title="Hand History"
+              >
+                📋
+              </button>
+            )}
+            <button
+              className="settings-button"
+              onClick={() => setShowSettingsModal(true)}
+              title="Game Settings"
+            >
+              ⚙️
+            </button>
+          </div>
+        </div>
         <div className="game-info">
           <div className="phase">Phase: {getPhaseDisplay()}</div>
           <div className="pot">Pot: {gameState.pot}</div>
@@ -214,6 +257,19 @@ const PokerGame: React.FC = () => {
           />
         </div>
       </div>
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
+      {gameState && (
+        <HandHistory
+          history={gameState.handHistory}
+          isOpen={showHandHistory}
+          onClose={() => setShowHandHistory(false)}
+        />
+      )}
     </div>
   );
 };
