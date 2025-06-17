@@ -1,5 +1,5 @@
 {
-  "name": "poker-game",
+  "name": "learn-poker",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Interactive Texas Hold'em poker game with AI analysis to help you learn and improve your poker skills",
   "dependencies": {
     "@types/node": "^24.0.3",
     "@types/react": "^19.1.8",

@@ -10,9 +10,10 @@ interface PlayerProps {
   isBigBlind: boolean;
   showCards: boolean;
   isWinner?: boolean;
+  cardSize?: 'small' | 'medium' | 'large';
 }
 
-const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSmallBlind, isBigBlind, showCards, isWinner = false }) => {
+const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSmallBlind, isBigBlind, showCards, isWinner = false, cardSize = 'medium' }) => {
   return (
     <div className={`player ${isCurrentPlayer ? 'current-player' : ''} ${player.isFolded ? 'folded' : ''} ${isWinner ? 'winner' : ''}`}>
       <div className="player-info">
@@ -42,6 +43,7 @@ const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSm
             key={index}
             card={card}
             hidden={!showCards && player.isBot}
+            size={cardSize}
           />
         ))}
       </div>

@@ -43,17 +43,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </label>
             </div>
             <div className="setting-item">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.colorBlindMode}
-                  onChange={(e) => updateSetting('colorBlindMode', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Color Blind Support
-              </label>
-            </div>
-            <div className="setting-item">
               <label htmlFor="cardSize">Card Size</label>
               <select
                 id="cardSize"
@@ -81,76 +70,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 Show Advanced Analysis by Default
               </label>
             </div>
-            <div className="setting-item">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.showCardCount}
-                  onChange={(e) => updateSetting('showCardCount', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Show Card Counting
-              </label>
-            </div>
-            <div className="setting-item">
-              <label htmlFor="analysisDetail">Analysis Detail Level</label>
-              <select
-                id="analysisDetail"
-                value={settings.analysisDetail}
-                onChange={(e) => updateSetting('analysisDetail', e.target.value as 'simple' | 'detailed')}
-              >
-                <option value="simple">Simple</option>
-                <option value="detailed">Detailed</option>
-              </select>
-            </div>
           </div>
 
           {/* Game Experience Settings */}
           <div className="settings-section">
             <h3>Game Experience</h3>
             <div className="setting-item">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.animationsEnabled}
-                  onChange={(e) => updateSetting('animationsEnabled', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Enable Animations
-              </label>
-            </div>
-            <div className="setting-item">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.soundEnabled}
-                  onChange={(e) => updateSetting('soundEnabled', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Enable Sound Effects
-              </label>
-            </div>
-            <div className="setting-item">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.confirmActions}
-                  onChange={(e) => updateSetting('confirmActions', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Confirm Important Actions
-              </label>
-            </div>
-            <div className="setting-item">
-              <label htmlFor="autoFoldTimeout">Auto-Fold Timeout (seconds)</label>
-              <input
-                id="autoFoldTimeout"
-                type="number"
-                min="10"
-                max="120"
-                value={settings.autoFoldTimeout}
-                onChange={(e) => updateSetting('autoFoldTimeout', parseInt(e.target.value) || 30)}
-              />
+              <label htmlFor="botSpeed">Bot Play Speed</label>
+              <select
+                id="botSpeed"
+                value={settings.botSpeed}
+                onChange={(e) => updateSetting('botSpeed', e.target.value as 'fast' | 'normal' | 'slow')}
+              >
+                <option value="fast">Fast (0.5s)</option>
+                <option value="normal">Normal (1s)</option>
+                <option value="slow">Slow (2s)</option>
+              </select>
             </div>
           </div>
         </div>

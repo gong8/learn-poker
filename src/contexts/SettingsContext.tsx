@@ -3,27 +3,15 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 export interface GameSettings {
   darkMode: boolean;
   showAdvancedAnalysis: boolean;
-  animationsEnabled: boolean;
-  soundEnabled: boolean;
-  autoFoldTimeout: number;
-  confirmActions: boolean;
-  showCardCount: boolean;
-  colorBlindMode: boolean;
   cardSize: 'small' | 'medium' | 'large';
-  analysisDetail: 'simple' | 'detailed';
+  botSpeed: 'fast' | 'normal' | 'slow';
 }
 
 const defaultSettings: GameSettings = {
   darkMode: false,
   showAdvancedAnalysis: false,
-  animationsEnabled: true,
-  soundEnabled: true,
-  autoFoldTimeout: 30,
-  confirmActions: false,
-  showCardCount: true,
-  colorBlindMode: false,
   cardSize: 'medium',
-  analysisDetail: 'simple'
+  botSpeed: 'normal'
 };
 
 interface SettingsContextType {

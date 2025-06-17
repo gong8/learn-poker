@@ -59,10 +59,18 @@ const PokerGame: React.FC = () => {
         return; // Hand should be ending, don't process more bot actions
       }
       
+      const getBotDelay = () => {
+        switch (settings.botSpeed) {
+          case 'fast': return 500;
+          case 'slow': return 2000;
+          default: return 1000;
+        }
+      };
+
       const timer = setTimeout(() => {
         const botDecision = makeBotDecision(gameState, gameState.currentPlayerIndex);
         handlePlayerAction(botDecision.action, botDecision.betAmount);
-      }, 1000);
+      }, getBotDelay());
 
       return () => clearTimeout(timer);
     }
@@ -113,7 +121,7 @@ const PokerGame: React.FC = () => {
     <div className="poker-game">
       <div className="game-header">
         <div className="header-top">
-          <h1>Texas Hold'em Poker</h1>
+          <h1>Learn Poker</h1>
           <div style={{ display: 'flex', gap: '8px' }}>
             {gameState && (
               <button
@@ -151,6 +159,7 @@ const PokerGame: React.FC = () => {
                     key={index}
                     card={gameState.communityCards[index] || null}
                     hidden={!gameState.communityCards[index]}
+                    size={settings.cardSize}
                   />
                 ))}
               </div>
@@ -161,6 +170,9 @@ const PokerGame: React.FC = () => {
                 const isWinner = !gameState.isGameActive && 
                   gameState.lastHandSummaries.some(summary => 
                     summary.playerId === player.id && summary.isWinner
+                  ) &&
+                  gameState.lastHandChipChanges.some(change => 
+                    change.playerId === player.id && change.change > 0
                   );
                 
                 return (
@@ -173,6 +185,7 @@ const PokerGame: React.FC = () => {
                     isBigBlind={index === gameState.bigBlindIndex}
                     showCards={showdown || !player.isBot}
                     isWinner={isWinner}
+                    cardSize={settings.cardSize}
                   />
                 );
               })}
@@ -181,7 +194,12 @@ const PokerGame: React.FC = () => {
 
           {!gameState.isGameActive ? (
             <div className="game-over">
-              <h2>Hand Complete</h2>
+              <div className="game-over-header">
+                <h2>Hand Complete</h2>
+                <button onClick={startNewRound} className="new-hand-button primary">
+                  Start New Hand
+                </button>
+              </div>
               <div className="hand-results-layout">
                 <div className="hand-results-left">
                   <HandSummaryComponent summaries={gameState.lastHandSummaries} />
@@ -214,9 +232,6 @@ const PokerGame: React.FC = () => {
                       </table>
                     </div>
                   )}
-                  <button onClick={startNewRound} className="new-hand-button">
-                    Start New Hand
-                  </button>
                 </div>
               </div>
             </div>
