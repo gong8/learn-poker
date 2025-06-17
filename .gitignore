@@ -43,10 +43,10 @@ Thumbs.db
 .vscode/
 
 # Output of TypeScript
-*.js
-*.jsx
-*.map
-*.d.ts
+#*.js
+#*.jsx
+#*.map
+#*.d.ts
 
 # Webpack cache
 .cache/
