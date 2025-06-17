@@ -1,0 +1,60 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Compiled source
+*.tsbuildinfo
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm/
+
+# IDE settings
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# VSCode settings (optional)
+.vscode/
+
+# Output of TypeScript
+*.js
+*.jsx
+*.map
+*.d.ts
+
+# Webpack cache
+.cache/
+webpack-stats.json
+
+# Storybook build
+.out/
+
+# Custom
+.claude
+
