@@ -15,7 +15,8 @@ export function createInitialGameState(playerCount: number, botCount: number): G
     currentBet: 0,
     totalContribution: 0,
     isAllIn: false,
-    hasActedInRound: false
+    hasActedInRound: false,
+    isEliminated: false
   });
   
   for (let i = 0; i < botCount; i++) {
@@ -29,7 +30,8 @@ export function createInitialGameState(playerCount: number, botCount: number): G
       currentBet: 0,
       totalContribution: 0,
       isAllIn: false,
-      hasActedInRound: false
+      hasActedInRound: false,
+      isEliminated: false
     });
   }
   
@@ -55,8 +57,41 @@ export function createInitialGameState(playerCount: number, botCount: number): G
   };
 }
 
+function eliminatePlayersWithoutChips(gameState: GameState): void {
+  // Mark players with 0 chips as eliminated
+  gameState.players.forEach(player => {
+    if (player.chips <= 0) {
+      player.chips = 0; // Ensure consistent 0 value for eliminated players
+      player.isFolded = true; // Mark as folded so they don't participate
+      player.isEliminated = true; // Mark as eliminated
+    }
+  });
+  
+  // Filter out eliminated players from position calculations
+  const remainingPlayers = gameState.players.filter(p => !p.isEliminated);
+  
+  if (remainingPlayers.length > 0) {
+    // Adjust dealer position to a remaining player if current dealer is eliminated
+    let attempts = 0;
+    while (attempts < gameState.players.length && gameState.players[gameState.dealerIndex].isEliminated) {
+      gameState.dealerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
+      attempts++;
+    }
+  }
+}
+
 export function startNewHand(gameState: GameState): GameState {
   const newState = { ...gameState };
+  
+  // Eliminate players with 0 chips
+  eliminatePlayersWithoutChips(newState);
+  
+  // Check if only one player remains
+  const remainingPlayers = newState.players.filter(p => !p.isEliminated);
+  if (remainingPlayers.length <= 1) {
+    newState.isGameActive = false;
+    return newState;
+  }
   
   newState.deck = createDeck();
   newState.communityCards = [];
@@ -69,17 +104,43 @@ export function startNewHand(gameState: GameState): GameState {
   newState.lastHandSummaries = [];
   newState.handNumber += 1;
   
-  newState.dealerIndex = (newState.dealerIndex + 1) % newState.players.length;
-  newState.smallBlindIndex = (newState.dealerIndex + 1) % newState.players.length;
-  newState.bigBlindIndex = (newState.dealerIndex + 2) % newState.players.length;
-  newState.currentPlayerIndex = (newState.bigBlindIndex + 1) % newState.players.length;
+  // Move dealer to next player with chips
+  let dealerAttempts = 0;
+  do {
+    newState.dealerIndex = (newState.dealerIndex + 1) % newState.players.length;
+    dealerAttempts++;
+  } while (dealerAttempts < newState.players.length && newState.players[newState.dealerIndex].isEliminated);
+  
+  // Set small blind to next player with chips after dealer
+  newState.smallBlindIndex = newState.dealerIndex;
+  let sbAttempts = 0;
+  do {
+    newState.smallBlindIndex = (newState.smallBlindIndex + 1) % newState.players.length;
+    sbAttempts++;
+  } while (sbAttempts < newState.players.length && newState.players[newState.smallBlindIndex].isEliminated);
+  
+  // Set big blind to next player with chips after small blind
+  newState.bigBlindIndex = newState.smallBlindIndex;
+  let bbAttempts = 0;
+  do {
+    newState.bigBlindIndex = (newState.bigBlindIndex + 1) % newState.players.length;
+    bbAttempts++;
+  } while (bbAttempts < newState.players.length && newState.players[newState.bigBlindIndex].isEliminated);
+  
+  // Set first to act to next player with chips after big blind
+  newState.currentPlayerIndex = newState.bigBlindIndex;
+  let firstAttempts = 0;
+  do {
+    newState.currentPlayerIndex = (newState.currentPlayerIndex + 1) % newState.players.length;
+    firstAttempts++;
+  } while (firstAttempts < newState.players.length && newState.players[newState.currentPlayerIndex].isEliminated);
   
   const startingChips = newState.players.map(p => ({ id: p.id, chips: p.chips }));
   
   newState.players = newState.players.map((player, index) => ({
     ...player,
     cards: [],
-    isFolded: false,
+    isFolded: player.isEliminated, // Keep eliminated players folded
     currentBet: 0,
     totalContribution: 0,
     isAllIn: false,
@@ -97,7 +158,7 @@ export function startNewHand(gameState: GameState): GameState {
 function dealCards(gameState: GameState): void {
   for (let i = 0; i < 2; i++) {
     for (const player of gameState.players) {
-      if (gameState.deck.length > 0) {
+      if (!player.isEliminated && gameState.deck.length > 0) {
         const card = gameState.deck.pop()!;
         player.cards.push(card);
         updateDeckTracker(gameState.deckTracker, card);
@@ -155,24 +216,44 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       
     case 'call':
       const callAmount = Math.min(currentPlayer.chips, newState.currentBet - currentPlayer.currentBet);
-      currentPlayer.chips -= callAmount;
+      currentPlayer.chips = Math.round((currentPlayer.chips - callAmount) * 100) / 100; // Fix floating point precision
       currentPlayer.currentBet += callAmount;
       currentPlayer.totalContribution += callAmount;
       newState.pot += callAmount;
-      if (currentPlayer.chips === 0) currentPlayer.isAllIn = true;
+      if (currentPlayer.chips <= 0) {
+        currentPlayer.chips = 0;
+        currentPlayer.isAllIn = true;
+      }
       break;
       
     case 'bet':
     case 'raise':
       const raiseAmount = betAmount || newState.currentBet * 2;
       // Calculate how much more the player needs to bet
-      const additionalBet = Math.min(currentPlayer.chips, raiseAmount - currentPlayer.currentBet);
-      currentPlayer.chips -= additionalBet;
-      currentPlayer.currentBet += additionalBet;
-      currentPlayer.totalContribution += additionalBet;
-      newState.pot += additionalBet;
-      newState.currentBet = currentPlayer.currentBet;
-      if (currentPlayer.chips === 0) currentPlayer.isAllIn = true;
+      const additionalBet = Math.min(currentPlayer.chips, Math.max(0, raiseAmount - currentPlayer.currentBet));
+      
+      // If player can't cover the full raise amount, it becomes an all-in
+      if (additionalBet < raiseAmount - currentPlayer.currentBet && additionalBet === currentPlayer.chips) {
+        currentPlayer.chips = 0;
+        currentPlayer.currentBet += additionalBet;
+        currentPlayer.totalContribution += additionalBet;
+        newState.pot += additionalBet;
+        currentPlayer.isAllIn = true;
+        // Only update currentBet if this all-in is actually a raise
+        if (currentPlayer.currentBet > newState.currentBet) {
+          newState.currentBet = currentPlayer.currentBet;
+        }
+      } else {
+        currentPlayer.chips = Math.round((currentPlayer.chips - additionalBet) * 100) / 100; // Fix floating point precision
+        currentPlayer.currentBet += additionalBet;
+        currentPlayer.totalContribution += additionalBet;
+        newState.pot += additionalBet;
+        newState.currentBet = currentPlayer.currentBet;
+        if (currentPlayer.chips <= 0) {
+          currentPlayer.chips = 0;
+          currentPlayer.isAllIn = true;
+        }
+      }
       break;
       
     case 'all-in':
@@ -189,7 +270,7 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       // If this all-in is a raise, reset hasActedInRound for other players
       if (wasRaise) {
         newState.players.forEach((player, index) => {
-          if (index !== newState.currentPlayerIndex && !player.isFolded && !player.isAllIn) {
+          if (index !== newState.currentPlayerIndex && !player.isFolded && !player.isAllIn && !player.isEliminated) {
             player.hasActedInRound = false;
           }
         });
@@ -211,13 +292,13 @@ function moveToNextPlayer(gameState: GameState): void {
   let attempts = 0;
   const maxAttempts = gameState.players.length;
   
-  while (attempts < maxAttempts && (gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn)) {
+  while (attempts < maxAttempts && (gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn || gameState.players[nextIndex].isEliminated)) {
     nextIndex = (nextIndex + 1) % gameState.players.length;
     attempts++;
   }
   
   // If we've gone through all players and none can act, set currentPlayerIndex to -1
-  if (attempts >= maxAttempts || gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn) {
+  if (attempts >= maxAttempts || gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn || gameState.players[nextIndex].isEliminated) {
     gameState.currentPlayerIndex = -1;
     return;
   }
@@ -226,9 +307,15 @@ function moveToNextPlayer(gameState: GameState): void {
 }
 
 function isRoundComplete(gameState: GameState): boolean {
-  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn);
+  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn && !p.isEliminated);
+  const allNonFoldedPlayers = gameState.players.filter(p => !p.isFolded && !p.isEliminated);
   
-  // If only one active player remains, hand is over
+  // If only one non-folded player remains, hand is over
+  if (allNonFoldedPlayers.length <= 1) {
+    return true;
+  }
+  
+  // If only one active player remains (others folded or all-in), round is complete
   if (activePlayers.length <= 1) {
     return true;
   }
@@ -238,25 +325,28 @@ function isRoundComplete(gameState: GameState): boolean {
     return true;
   }
   
-  // Special case: if all active players are all-in, round is complete
-  const allActivePlayersAllIn = activePlayers.every(p => p.isAllIn);
-  if (allActivePlayersAllIn) {
+  // Special case: if all remaining players are all-in, round is complete
+  if (activePlayers.length === 0) {
     return true;
   }
   
-  // Check if all active players have equal bets
+  // Check if all active players have equal bets and have acted
   const currentBets = activePlayers.map(p => p.currentBet);
   const allBetsEqual = currentBets.every(bet => bet === currentBets[0]);
-  
-  // Check if all active players have acted in this round
   const allPlayersActed = activePlayers.every(p => p.hasActedInRound);
+  
+  // Additional safety check: if current player is not in active players list
+  const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+  if (!currentPlayer || currentPlayer.isFolded || currentPlayer.isAllIn || currentPlayer.isEliminated) {
+    return allBetsEqual;
+  }
   
   return allBetsEqual && allPlayersActed;
 }
 
 function advanceToNextPhase(gameState: GameState): void {
   // Check if only one active player remains - if so, deal remaining cards then go to showdown
-  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn);
+  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn && !p.isEliminated);
   if (activePlayers.length <= 1) {
     // Deal all remaining community cards to complete the board
     dealRemainingCommunityCards(gameState);
@@ -288,8 +378,20 @@ function advanceToNextPhase(gameState: GameState): void {
   
   if (gameState.phase !== 'showdown') {
     gameState.currentPlayerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
-    while (gameState.players[gameState.currentPlayerIndex].isFolded || gameState.players[gameState.currentPlayerIndex].isAllIn) {
+    let attempts = 0;
+    const maxAttempts = gameState.players.length;
+    
+    while (attempts < maxAttempts && (gameState.players[gameState.currentPlayerIndex].isFolded || gameState.players[gameState.currentPlayerIndex].isAllIn || gameState.players[gameState.currentPlayerIndex].isEliminated)) {
       gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+      attempts++;
+    }
+    
+    // If no valid player found, force showdown
+    if (attempts >= maxAttempts) {
+      gameState.phase = 'showdown';
+      dealRemainingCommunityCards(gameState);
+      determineWinner(gameState);
+      return;
     }
   }
 }
@@ -321,7 +423,7 @@ function dealRemainingCommunityCards(gameState: GameState): void {
 }
 
 function determineWinner(gameState: GameState): void {
-  const activePlayers = gameState.players.filter(p => !p.isFolded);
+  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isEliminated);
   
   const startingChips = (gameState as any).handStartingChips || gameState.players.map(p => ({ id: p.id, chips: p.chips }));
   
@@ -478,7 +580,7 @@ export function getValidActions(gameState: GameState, playerIndex: number): Acti
   const player = gameState.players[playerIndex];
   const actions: Action[] = [];
   
-  if (player.isFolded || player.isAllIn) {
+  if (player.isFolded || player.isAllIn || player.isEliminated || player.chips <= 0) {
     return actions;
   }
   

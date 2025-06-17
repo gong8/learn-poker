@@ -17,6 +17,7 @@ export interface Player {
   totalContribution: number;
   isAllIn: boolean;
   hasActedInRound: boolean;
+  isEliminated: boolean;
 }
 
 export type GamePhase = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
@@ -31,7 +32,7 @@ export interface DeckTracker {
 }
 
 export interface DrawInfo {
-  type: 'flush' | 'straight' | 'gutshot' | 'two-pair' | 'trips' | 'full-house' | 'improve' | 'backdoor-flush' | 'double-gutshot' | 'pair' | 'flush-draw' | 'open-ended';
+  type: 'flush' | 'straight' | 'gutshot' | 'two-pair' | 'trips' | 'full-house' | 'improve' | 'backdoor-flush' | 'double-gutshot' | 'pair' | 'flush-draw' | 'open-ended' | 'four-of-a-kind' | 'straight-flush' | 'royal-flush' | 'runner-runner';
   outs: number;
   probability: number;
   description: string;

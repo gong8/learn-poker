@@ -86,7 +86,7 @@ function evaluatePartialHand(cards: Card[]): HandEvaluation {
   });
   
   const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
-  const isFlush = suits.length >= 2 && suits.every(suit => suit === suits[0]);
+  const isSuited = suits.length >= 2 && suits.every(suit => suit === suits[0]);
   
   // Check for pairs in partial hands
   if (counts[0] === 2) {
@@ -98,26 +98,11 @@ function evaluatePartialHand(cards: Card[]): HandEvaluation {
     };
   }
   
-  // Check for flush potential (all same suit)
-  if (isFlush) {
-    return { 
-      rank: 'flush', 
-      score: 500 + getRankValue(ranks[0]), 
-      cards: sortCardsSystematically(cards, 'flush') 
-    };
-  }
+  // For partial hands, suited cards are just high card with potential
+  // Don't call it a flush unless we actually have 5 cards
   
-  // Check for straight potential (partial straights)
-  if (cards.length >= 2) {
-    const straightResult = checkPartialStraight(ranks);
-    if (straightResult.isPotentialStraight) {
-      return { 
-        rank: 'straight', 
-        score: 400 + straightResult.highCard, 
-        cards: sortCardsSystematically(cards, 'straight') 
-      };
-    }
-  }
+  // For partial hands with < 5 cards, we should only ever return high-card or pair
+  // Don't claim straights or flushes until we have enough cards
   
   // Default to high card
   return { 

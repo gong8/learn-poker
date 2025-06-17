@@ -11,6 +11,7 @@ import PlayerAnalysisPanel from './components/PlayerAnalysis';
 import HandSummaryComponent from './components/HandSummary';
 import SettingsModal from './components/SettingsModal';
 import HandHistory from './components/HandHistory';
+import EliminationModal from './components/EliminationModal';
 import { useSettings } from './contexts/SettingsContext';
 
 const PokerGame: React.FC = () => {
@@ -20,12 +21,19 @@ const PokerGame: React.FC = () => {
   const [playerAnalysis, setPlayerAnalysis] = useState<PlayerAnalysis | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
+  const [showEliminationModal, setShowEliminationModal] = useState(false);
 
   const startGame = (botCount: number) => {
     const initialState = createInitialGameState(1, botCount);
     const newGameState = startNewHand(initialState);
     setGameState(newGameState);
     setShowdown(false);
+    setShowEliminationModal(false);
+  };
+
+  const returnToStart = () => {
+    setGameState(null);
+    setShowEliminationModal(false);
   };
 
   const startNewRound = () => {
@@ -81,6 +89,11 @@ const PokerGame: React.FC = () => {
 
     const humanPlayer = gameState.players.find(p => !p.isBot);
     if (humanPlayer) {
+      // Check if human player is eliminated and show modal
+      if (humanPlayer.isEliminated && !showEliminationModal) {
+        setShowEliminationModal(true);
+      }
+
       const humanPlayerIndex = gameState.players.indexOf(humanPlayer);
       const isHumanTurn = gameState.currentPlayerIndex === humanPlayerIndex;
       const analysis = analyzePlayer(gameState, humanPlayerIndex);
@@ -96,7 +109,7 @@ const PokerGame: React.FC = () => {
         } : analysis);
       }
     }
-  }, [gameState]);
+  }, [gameState, showEliminationModal]);
 
   if (!gameState) {
     return <GameSetup onStartGame={startGame} />;
@@ -168,9 +181,6 @@ const PokerGame: React.FC = () => {
             <div className="players">
               {gameState.players.map((player, index) => {
                 const isWinner = !gameState.isGameActive && 
-                  gameState.lastHandSummaries.some(summary => 
-                    summary.playerId === player.id && summary.isWinner
-                  ) &&
                   gameState.lastHandChipChanges.some(change => 
                     change.playerId === player.id && change.change > 0
                   );
@@ -285,6 +295,11 @@ const PokerGame: React.FC = () => {
           onClose={() => setShowHandHistory(false)}
         />
       )}
+
+      <EliminationModal
+        isOpen={showEliminationModal}
+        onReturnToStart={returnToStart}
+      />
     </div>
   );
 };

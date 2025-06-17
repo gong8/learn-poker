@@ -25,11 +25,11 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisibl
   };
 
   const getHandQuality = (strength: number) => {
-    if (strength > 0.8) return 'Excellent';
-    if (strength > 0.6) return 'Good';
-    if (strength > 0.4) return 'Fair';
-    if (strength > 0.2) return 'Poor';
-    return 'Very Poor';
+    if (strength > 0.75) return 'Excellent';  // Four of a kind+
+    if (strength > 0.55) return 'Good';       // Flush+
+    if (strength > 0.30) return 'Fair';       // Three of a kind+
+    if (strength > 0.08) return 'Poor';       // Pair+
+    return 'Very Poor';                       // High card
   };
 
   const getWinChance = (probability: number) => {
@@ -137,7 +137,7 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisibl
               <div className="stat-item">
                 <span className="stat-label">Pot Odds</span>
                 <span className="stat-value">
-                  {analysis.potOdds === Infinity ? '∞' : `${analysis.potOdds.toFixed(1)}:1`}
+                  {analysis.potOdds === 0 ? 'Free' : `${analysis.potOdds.toFixed(1)}:1`}
                 </span>
               </div>
               <div className="stat-item">

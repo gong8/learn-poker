@@ -15,7 +15,7 @@ interface PlayerProps {
 
 const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSmallBlind, isBigBlind, showCards, isWinner = false, cardSize = 'medium' }) => {
   return (
-    <div className={`player ${isCurrentPlayer ? 'current-player' : ''} ${player.isFolded ? 'folded' : ''} ${isWinner ? 'winner' : ''}`}>
+    <div className={`player ${isCurrentPlayer ? 'current-player' : ''} ${player.isFolded ? 'folded' : ''} ${isWinner ? 'winner' : ''} ${player.isEliminated ? 'eliminated' : ''}`}>
       <div className="player-info">
         <div className="player-name">
           {player.name}
@@ -35,6 +35,9 @@ const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, isDealer, isSm
         )}
         {player.isAllIn && (
           <div className="all-in-indicator">ALL IN</div>
+        )}
+        {player.isEliminated && (
+          <div className="eliminated-indicator">ELIMINATED</div>
         )}
       </div>
       <div className="player-cards">

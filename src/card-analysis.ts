@@ -118,7 +118,7 @@ function getRankValue(rank: Rank): number {
 }
 
 export function calculatePotOdds(pot: number, betToCall: number): number {
-  if (betToCall === 0) return Infinity;
+  if (betToCall <= 0) return 0; // When you can check for free, pot odds are irrelevant
   return pot / betToCall;
 }
 
@@ -130,6 +130,15 @@ export function calculateAdvancedOuts(playerCards: Card[], communityCards: Card[
   let totalOuts = 0;
   
   if (allCurrentCards.length >= 5) {
+    // For complete hands (5+ cards), still analyze specific draws but also include improvement
+    const flushDraws = analyzeFlushDraw(playerCards, communityCards, deckTracker);
+    const straightDraws = analyzeStraightDraw(playerCards, communityCards, deckTracker);
+    const pairDraws = analyzePairDraw(playerCards, communityCards, deckTracker);
+    const fullHouseDraws = analyzeFullHouseDraws(playerCards, communityCards, deckTracker);
+    
+    const allDraws = [...flushDraws, ...straightDraws, ...pairDraws, ...fullHouseDraws];
+    
+    // Add generic improvement draw if there are other outs not covered
     const currentHand = evaluateHand(allCurrentCards);
     let improveOuts = 0;
     
@@ -142,31 +151,38 @@ export function calculateAdvancedOuts(playerCards: Card[], communityCards: Card[
       }
     }
     
-    if (improveOuts > 0) {
+    // Only add improve draw if there are outs not covered by specific draws
+    const specificOuts = allDraws.reduce((sum, draw) => sum + draw.outs, 0);
+    const additionalOuts = Math.max(0, improveOuts - specificOuts);
+    
+    if (additionalOuts > 0) {
       const handRank = currentHand.rank;
       let improvementDescription = '';
       
       if (handRank === 'high-card') {
-        improvementDescription = `${improveOuts} cards to make a pair or better`;
+        improvementDescription = `${additionalOuts} additional outs to improve`;
       } else if (handRank === 'pair') {
-        improvementDescription = `${improveOuts} cards to make two pair, trips, or better`;
+        improvementDescription = `${additionalOuts} other outs for two pair, trips, or better`;
       } else if (handRank === 'two-pair') {
-        improvementDescription = `${improveOuts} cards to make a full house or better`;
+        improvementDescription = `${additionalOuts} other outs for full house or better`;
       } else if (handRank === 'three-of-a-kind') {
-        improvementDescription = `${improveOuts} cards to make a full house or quads`;
+        improvementDescription = `${additionalOuts} other outs for full house or quads`;
       } else {
-        improvementDescription = `${improveOuts} cards to improve current ${handRank.replace('-', ' ')}`;
+        improvementDescription = `${additionalOuts} other outs to improve ${handRank.replace('-', ' ')}`;
       }
       
-      draws.push({
+      allDraws.push({
         type: 'improve',
-        outs: improveOuts,
-        probability: (improveOuts / deckTracker.remainingCards.length) * 100,
+        outs: additionalOuts,
+        probability: (additionalOuts / deckTracker.remainingCards.length) * 100,
         description: improvementDescription
       });
     }
     
-    return { outs: improveOuts, draws };
+    allDraws.sort((a, b) => b.probability - a.probability);
+    const totalUniqueOuts = Math.min(improveOuts, 21); // Cap at reasonable maximum
+    
+    return { outs: totalUniqueOuts, draws: allDraws };
   }
   
   // Pre-flop and early street analysis
@@ -210,12 +226,68 @@ function analyzeFlushDraw(playerCards: Card[], communityCards: Card[], deckTrack
     if (count === 4) {
       const remainingSuitCards = deckTracker.remainingCards.filter(card => card.suit === suit).length;
       if (remainingSuitCards > 0) {
-        draws.push({
-          type: 'flush',
-          outs: remainingSuitCards,
-          probability: (remainingSuitCards / deckTracker.remainingCards.length) * 100,
-          description: `Flush draw - need 1 more ${suit}`
-        });
+        // Check if this could also be a straight flush or royal flush
+        const suitedCards = allCards.filter(card => card.suit === suit);
+        const suitedRanks = suitedCards.map(card => getRankValue(card.rank)).sort((a, b) => a - b);
+        
+        let isRoyalFlushDraw = false;
+        let isStraightFlushDraw = false;
+        
+        // Check for royal flush draw (need A, K, Q, J, 10 of same suit)
+        const royalRanks = [10, 11, 12, 13, 14];
+        const hasRoyalCards = royalRanks.filter(rank => suitedRanks.includes(rank));
+        if (hasRoyalCards.length >= 3) {
+          const missingRoyalRanks = royalRanks.filter(rank => !suitedRanks.includes(rank));
+          const royalOuts = deckTracker.remainingCards.filter(card => 
+            card.suit === suit && missingRoyalRanks.includes(getRankValue(card.rank))
+          ).length;
+          
+          if (royalOuts > 0) {
+            isRoyalFlushDraw = true;
+            draws.push({
+              type: 'royal-flush',
+              outs: royalOuts,
+              probability: (royalOuts / deckTracker.remainingCards.length) * 100,
+              description: `Royal flush draw - need ${missingRoyalRanks.map(r => getRankFromValue(r)).join(', ')} of ${suit}s`
+            });
+          }
+        }
+        
+        // Check for other straight flush draws
+        if (!isRoyalFlushDraw && suitedRanks.length >= 3) {
+          for (let start = 1; start <= 10; start++) {
+            const targetStraight = start === 1 ? [14, 2, 3, 4, 5] : [start, start+1, start+2, start+3, start+4];
+            const matchingSuited = targetStraight.filter(rank => suitedRanks.includes(rank));
+            const missingSuited = targetStraight.filter(rank => !suitedRanks.includes(rank));
+            
+            if (matchingSuited.length >= 3 && missingSuited.length === 1) {
+              const straightFlushOuts = deckTracker.remainingCards.filter(card => 
+                card.suit === suit && missingSuited.includes(getRankValue(card.rank))
+              ).length;
+              
+              if (straightFlushOuts > 0) {
+                isStraightFlushDraw = true;
+                draws.push({
+                  type: 'straight-flush',
+                  outs: straightFlushOuts,
+                  probability: (straightFlushOuts / deckTracker.remainingCards.length) * 100,
+                  description: `Straight flush draw - need ${getRankFromValue(missingSuited[0])} of ${suit}s`
+                });
+                break;
+              }
+            }
+          }
+        }
+        
+        // Regular flush draw (if not straight flush)
+        if (!isRoyalFlushDraw && !isStraightFlushDraw) {
+          draws.push({
+            type: 'flush',
+            outs: remainingSuitCards,
+            probability: (remainingSuitCards / deckTracker.remainingCards.length) * 100,
+            description: `Flush draw - need 1 more ${suit}`
+          });
+        }
       }
     }
   }
@@ -348,7 +420,14 @@ function getRankFromValue(value: number): string {
 function analyzePairDraw(playerCards: Card[], communityCards: Card[], deckTracker: DeckTracker): DrawInfo[] {
   const playerRanks = playerCards.map(card => card.rank);
   const communityRanks = communityCards.map(card => card.rank);
+  const allCards = [...playerCards, ...communityCards];
   const draws: DrawInfo[] = [];
+  
+  // Count all ranks
+  const rankCounts = new Map<string, number>();
+  allCards.forEach(card => {
+    rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1);
+  });
   
   // If we have a pocket pair, look for trips/quads
   if (playerRanks[0] === playerRanks[1]) {
@@ -356,40 +435,57 @@ function analyzePairDraw(playerCards: Card[], communityCards: Card[], deckTracke
     const outs = deckTracker.remainingCards.filter(card => card.rank === pairRank).length;
     
     if (outs > 0) {
-      draws.push({
-        type: 'trips',
-        outs,
-        probability: (outs / deckTracker.remainingCards.length) * 100,
-        description: `Set draw (${outs} outs to trips)`
-      });
+      const currentCount = rankCounts.get(pairRank) || 0;
+      if (currentCount === 2) {
+        draws.push({
+          type: 'trips',
+          outs,
+          probability: (outs / deckTracker.remainingCards.length) * 100,
+          description: `Set draw - ${outs} outs to trips`
+        });
+      } else if (currentCount === 3) {
+        draws.push({
+          type: 'four-of-a-kind',
+          outs,
+          probability: (outs / deckTracker.remainingCards.length) * 100,
+          description: `Quads draw - ${outs} out to four of a kind`
+        });
+      }
     }
   } else {
     // Look for pairing each hole card separately
     for (const rank of playerRanks) {
-      if (!communityRanks.includes(rank)) {
-        const outs = deckTracker.remainingCards.filter(card => card.rank === rank).length;
-        
-        if (outs > 0) {
-          draws.push({
-            type: 'pair',
-            outs,
-            probability: (outs / deckTracker.remainingCards.length) * 100,
-            description: `Pair ${rank}s (${outs} outs)`
-          });
-        }
+      const currentCount = rankCounts.get(rank) || 0;
+      const outs = deckTracker.remainingCards.filter(card => card.rank === rank).length;
+      
+      if (outs > 0 && currentCount === 1) {
+        draws.push({
+          type: 'pair',
+          outs,
+          probability: (outs / deckTracker.remainingCards.length) * 100,
+          description: `Pair of ${rank}s - ${outs} outs`
+        });
+      } else if (outs > 0 && currentCount === 2) {
+        draws.push({
+          type: 'trips',
+          outs,
+          probability: (outs / deckTracker.remainingCards.length) * 100,
+          description: `Trips ${rank}s - ${outs} outs`
+        });
+      } else if (outs > 0 && currentCount === 3) {
+        draws.push({
+          type: 'four-of-a-kind',
+          outs,
+          probability: (outs / deckTracker.remainingCards.length) * 100,
+          description: `Quads ${rank}s - ${outs} out`
+        });
       }
     }
     
     // Look for two pair draws (if we already have one pair)
-    const playerRankCounts = new Map<string, number>();
-    const allRanks = [...playerRanks, ...communityRanks];
-    allRanks.forEach(rank => {
-      playerRankCounts.set(rank, (playerRankCounts.get(rank) || 0) + 1);
-    });
-    
-    const pairs = Array.from(playerRankCounts.entries()).filter(([_, count]) => count === 2);
+    const pairs = Array.from(rankCounts.entries()).filter(([_, count]) => count === 2);
     if (pairs.length === 1) {
-      const unpaired = playerRanks.filter(rank => !pairs.some(([pairRank]) => pairRank === rank));
+      const unpaired = playerRanks.filter(rank => (rankCounts.get(rank) || 0) === 1);
       for (const rank of unpaired) {
         const outs = deckTracker.remainingCards.filter(card => card.rank === rank).length;
         
@@ -398,10 +494,150 @@ function analyzePairDraw(playerCards: Card[], communityCards: Card[], deckTracke
             type: 'two-pair',
             outs,
             probability: (outs / deckTracker.remainingCards.length) * 100,
-            description: `Two pair (${outs} outs to pair ${rank}s)`
+            description: `Two pair - ${outs} outs to pair ${rank}s`
           });
         }
       }
+    }
+  }
+  
+  // Look for runner-runner possibilities (when < 5 cards)
+  if (allCards.length <= 4 && communityCards.length <= 3) {
+    analyzeRunnerRunnerDraws(playerCards, communityCards, deckTracker, draws);
+  }
+  
+  return draws;
+}
+
+function analyzeRunnerRunnerDraws(playerCards: Card[], communityCards: Card[], deckTracker: DeckTracker, draws: DrawInfo[]): void {
+  // Only analyze runner-runner on flop or earlier
+  if (communityCards.length > 3) return;
+  
+  const allCards = [...playerCards, ...communityCards];
+  const suits = allCards.map(card => card.suit);
+  const ranks = allCards.map(card => getRankValue(card.rank));
+  
+  // Runner-runner flush (if we have 2 of same suit)
+  const suitCounts = new Map<string, number>();
+  suits.forEach(suit => {
+    suitCounts.set(suit, (suitCounts.get(suit) || 0) + 1);
+  });
+  
+  for (const [suit, count] of Array.from(suitCounts.entries())) {
+    if (count === 2 && communityCards.length === 3) {
+      const remainingSuitCards = deckTracker.remainingCards.filter(card => card.suit === suit).length;
+      if (remainingSuitCards >= 2) {
+        // Need both turn and river to be this suit
+        const turnProb = remainingSuitCards / deckTracker.remainingCards.length;
+        const riverProb = (remainingSuitCards - 1) / (deckTracker.remainingCards.length - 1);
+        const runnerRunnerProb = turnProb * riverProb * 100;
+        
+        draws.push({
+          type: 'runner-runner',
+          outs: remainingSuitCards,
+          probability: runnerRunnerProb,
+          description: `Runner-runner flush - need both turn & river ${suit}s`
+        });
+      }
+    }
+  }
+  
+  // Runner-runner straight possibilities
+  const uniqueRanks = Array.from(new Set(ranks)).sort((a, b) => a - b);
+  if (uniqueRanks.length >= 2) {
+    // Check for potential straights that need 2 more cards
+    for (let i = 1; i <= 10; i++) {
+      const targetStraight = i === 1 ? [14, 2, 3, 4, 5] : [i, i+1, i+2, i+3, i+4];
+      const matching = targetStraight.filter(rank => uniqueRanks.includes(rank));
+      const missing = targetStraight.filter(rank => !uniqueRanks.includes(rank));
+      
+      if (matching.length >= 2 && missing.length === 2 && communityCards.length === 3) {
+        let totalOuts = 0;
+        missing.forEach(missingRank => {
+          const outs = deckTracker.remainingCards.filter(card => getRankValue(card.rank) === missingRank).length;
+          totalOuts += outs;
+        });
+        
+        if (totalOuts >= 2) {
+          const runnerRunnerProb = (totalOuts / deckTracker.remainingCards.length) * 
+                                   ((totalOuts - 1) / (deckTracker.remainingCards.length - 1)) * 100;
+          
+          draws.push({
+            type: 'runner-runner',
+            outs: totalOuts,
+            probability: runnerRunnerProb,
+            description: `Runner-runner straight - need ${missing.map(r => getRankFromValue(r)).join(' & ')}`
+          });
+        }
+      }
+    }
+  }
+}
+
+function analyzeFullHouseDraws(playerCards: Card[], communityCards: Card[], deckTracker: DeckTracker): DrawInfo[] {
+  const allCards = [...playerCards, ...communityCards];
+  const draws: DrawInfo[] = [];
+  
+  if (allCards.length < 5) return draws;
+  
+  const rankCounts = new Map<string, number>();
+  allCards.forEach(card => {
+    rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1);
+  });
+  
+  const pairs = Array.from(rankCounts.entries()).filter(([_, count]) => count === 2);
+  const trips = Array.from(rankCounts.entries()).filter(([_, count]) => count === 3);
+  
+  // If we have trips, look for pairing the board or improving existing pairs
+  if (trips.length > 0) {
+    const tripRank = trips[0][0];
+    let fullHouseOuts = 0;
+    
+    // Check if we can improve existing pairs to trips
+    pairs.forEach(([pairRank, _]) => {
+      if (pairRank !== tripRank) {
+        const outs = deckTracker.remainingCards.filter(card => card.rank === pairRank).length;
+        fullHouseOuts += outs;
+      }
+    });
+    
+    // Check for pairing any rank on the board (community cards only)
+    const communityRanks = communityCards.map(card => card.rank);
+    const uniqueCommunityRanks = Array.from(new Set(communityRanks));
+    
+    uniqueCommunityRanks.forEach(rank => {
+      if (rank !== tripRank && (rankCounts.get(rank) || 0) === 1) {
+        // This rank appears once, so we can pair it
+        const outs = deckTracker.remainingCards.filter(card => card.rank === rank).length;
+        fullHouseOuts += outs;
+      }
+    });
+    
+    if (fullHouseOuts > 0) {
+      draws.push({
+        type: 'full-house',
+        outs: fullHouseOuts,
+        probability: (fullHouseOuts / deckTracker.remainingCards.length) * 100,
+        description: `Full house draw - ${fullHouseOuts} outs to pair the board`
+      });
+    }
+  }
+  
+  // If we have two pair, look for trips to make full house
+  if (pairs.length >= 2) {
+    let fullHouseOuts = 0;
+    pairs.forEach(([pairRank, _]) => {
+      const outs = deckTracker.remainingCards.filter(card => card.rank === pairRank).length;
+      fullHouseOuts += outs;
+    });
+    
+    if (fullHouseOuts > 0) {
+      draws.push({
+        type: 'full-house',
+        outs: fullHouseOuts,
+        probability: (fullHouseOuts / deckTracker.remainingCards.length) * 100,
+        description: `Full house draw - ${fullHouseOuts} outs to trips`
+      });
     }
   }
   
@@ -421,31 +657,29 @@ export function calculateEquity(playerCards: Card[], communityCards: Card[], dec
     return calculatePreFlopEquity(playerCards, communityCards, deckTracker);
   }
   
+  // For complete hands (5+ cards), use a more efficient equity calculation
   const currentHand = evaluateHand(allCards);
-  let wins = 0;
-  let total = 0;
+  const handStrength = currentHand.score / 900; // Normalize to 0-1
   
-  for (const card1 of deckTracker.remainingCards) {
-    for (const card2 of deckTracker.remainingCards) {
-      if (card1 === card2) continue;
-      
-      const opponentCards = [card1, card2];
-      const opponentHand = evaluateHand([...opponentCards, ...communityCards]);
-      
-      if (currentHand.score > opponentHand.score) {
-        wins++;
-      } else if (currentHand.score === opponentHand.score) {
-        wins += 0.5; // Split pot
-      }
-      
-      total++;
-      
-      if (total > 1000) break; // Performance limit
-    }
-    if (total > 1000) break;
+  // Simplified equity based on hand strength and remaining cards
+  // This is much more efficient than the nested loop approach
+  let equity = handStrength;
+  
+  // Adjust equity based on board texture and opponents
+  const remainingCards = deckTracker.remainingCards.length;
+  const communityStrength = evaluateCommunityStrength(communityCards);
+  
+  // If board is dangerous and our hand isn't very strong, reduce equity
+  if (communityStrength > 0.6 && handStrength < 0.6) {
+    equity *= 0.8;
   }
   
-  return total > 0 ? wins / total : 0;
+  // If we have draws, add some equity potential
+  const { outs } = calculateAdvancedOuts(playerCards, communityCards, deckTracker);
+  const drawEquity = Math.min(0.3, (outs / Math.max(1, remainingCards)) * 0.4);
+  equity += drawEquity;
+  
+  return Math.min(0.95, Math.max(0.05, equity));
 }
 
 function calculatePreFlopEquity(playerCards: Card[], communityCards: Card[], deckTracker: DeckTracker): number {
@@ -464,9 +698,13 @@ export function calculateExpectedValue(
   betToCall: number,
   pot: number
 ): number {
-  if (remainingCards === 0 || betToCall === 0) return 0;
+  // If we can check for free, EV is always positive (no cost to see next card)
+  if (betToCall <= 0) return pot * equity;
   
-  const winProbability = Math.min(0.95, equity + (outs / remainingCards) * 0.3);
+  if (remainingCards === 0) return 0;
+  
+  // Use equity directly as win probability, don't double-count outs
+  const winProbability = Math.min(0.95, Math.max(0.05, equity));
   const winAmount = pot + betToCall;
   const loseAmount = betToCall;
   
@@ -510,19 +748,22 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
     if (validActions.includes('call')) return 'call';
   }
   
-  // Medium draws with decent pot odds
-  if (hasMediumDraw && analysis.potOdds > 3 && expectedValue > -0.1) {
+  // Medium draws with decent pot odds (or when we can check for free)
+  if (hasMediumDraw && (analysis.potOdds === 0 || analysis.potOdds > 3) && expectedValue > -0.1) {
     if (validActions.includes('call')) return 'call';
+    if (validActions.includes('check')) return 'check';
   }
   
   // Medium strength hands with positive EV
   if (expectedValue > 0 && (handStrength > 0.5 || winProbability > 0.4)) {
     if (validActions.includes('call')) return 'call';
+    if (validActions.includes('check')) return 'check';
   }
   
-  // Marginal hands with very good pot odds
-  if (analysis.potOdds > 4 && (handStrength > 0.3 || outs > 4)) {
+  // Marginal hands with very good pot odds (or free to see next card)
+  if ((analysis.potOdds === 0 || analysis.potOdds > 4) && (handStrength > 0.3 || outs > 4)) {
     if (validActions.includes('call')) return 'call';
+    if (validActions.includes('check')) return 'check';
   }
   
   // Default to fold or check if possible

@@ -255,6 +255,30 @@ body {
   display: inline-block;
 }
 
+.player.eliminated {
+  border-color: #dc2626;
+  background: #fef2f2;
+  box-shadow: 0 0 0 2px #ef4444;
+  opacity: 0.7;
+}
+
+:root.dark-mode .player.eliminated {
+  border-color: #dc2626;
+  background: #7f1d1d;
+  box-shadow: 0 0 0 2px #ef4444;
+}
+
+.eliminated-indicator {
+  background: #dc2626;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 6px;
+  display: inline-block;
+}
+
 .player-cards {
   display: flex;
   gap: 5px;
@@ -1448,6 +1472,70 @@ body {
   --border-light: #64748b;
   --shadow-color: rgba(0, 0, 0, 0.3);
   --shadow-light: rgba(0, 0, 0, 0.2);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+}
+
+.modal-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+.modal-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.modal-body p {
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.modal-footer {
+  padding: 16px 24px 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.elimination-modal .modal-header h2 {
+  color: #dc2626;
+}
+
+.elimination-modal .modal-body p:first-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #dc2626;
 }
 
 /* Settings Modal Styles */
