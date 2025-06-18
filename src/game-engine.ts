@@ -1,14 +1,15 @@
-import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary, HandHistoryEntry } from './types';
+import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary, HandHistoryEntry, BotBehavior } from './types';
 import { createDeck, evaluateHand, getHandTypeDisplayName } from './poker-logic';
 import { createDeckTracker, updateDeckTracker } from './card-analysis';
+import { getBotProfile } from './bot-profiles';
 
-export function createInitialGameState(playerCount: number, botCount: number): GameState {
+export function createInitialGameState(playerCount: number, botCount: number, botConfigs?: BotBehavior[]): GameState {
   const players: Player[] = [];
   
   players.push({
     id: 'human',
     name: 'You',
-    chips: 1000,
+    chips: 100,
     cards: [],
     isBot: false,
     isFolded: false,
@@ -20,10 +21,11 @@ export function createInitialGameState(playerCount: number, botCount: number): G
   });
   
   for (let i = 0; i < botCount; i++) {
+    const botBehavior = botConfigs?.[i] || 'balanced';
     players.push({
       id: `bot-${i}`,
       name: `Bot ${i + 1}`,
-      chips: 1000,
+      chips: 100,
       cards: [],
       isBot: true,
       isFolded: false,
@@ -31,7 +33,8 @@ export function createInitialGameState(playerCount: number, botCount: number): G
       totalContribution: 0,
       isAllIn: false,
       hasActedInRound: false,
-      isEliminated: false
+      isEliminated: false,
+      botProfile: getBotProfile(botBehavior)
     });
   }
   
@@ -46,8 +49,8 @@ export function createInitialGameState(playerCount: number, botCount: number): G
     phase: 'preflop',
     currentBet: 0,
     deck: createDeck(),
-    smallBlind: 10,
-    bigBlind: 20,
+    smallBlind: 5,
+    bigBlind: 10,
     isGameActive: false,
     deckTracker: createDeckTracker(),
     lastHandChipChanges: [],
@@ -96,7 +99,7 @@ export function startNewHand(gameState: GameState): GameState {
   newState.deck = createDeck();
   newState.communityCards = [];
   newState.pot = 0;
-  newState.currentBet = newState.bigBlind;
+  newState.currentBet = Math.round(newState.bigBlind);
   newState.phase = 'preflop';
   newState.isGameActive = true;
   newState.deckTracker = createDeckTracker();
@@ -174,17 +177,17 @@ function postBlinds(gameState: GameState): void {
   const smallBlindAmount = Math.min(smallBlindPlayer.chips, gameState.smallBlind);
   const bigBlindAmount = Math.min(bigBlindPlayer.chips, gameState.bigBlind);
   
-  smallBlindPlayer.chips -= smallBlindAmount;
-  smallBlindPlayer.currentBet = smallBlindAmount;
-  smallBlindPlayer.totalContribution = smallBlindAmount;
+  smallBlindPlayer.chips = Math.round(smallBlindPlayer.chips - smallBlindAmount);
+  smallBlindPlayer.currentBet = Math.round(smallBlindAmount);
+  smallBlindPlayer.totalContribution = Math.round(smallBlindAmount);
   smallBlindPlayer.hasActedInRound = true;
   
-  bigBlindPlayer.chips -= bigBlindAmount;
-  bigBlindPlayer.currentBet = bigBlindAmount;
-  bigBlindPlayer.totalContribution = bigBlindAmount;
+  bigBlindPlayer.chips = Math.round(bigBlindPlayer.chips - bigBlindAmount);
+  bigBlindPlayer.currentBet = Math.round(bigBlindAmount);
+  bigBlindPlayer.totalContribution = Math.round(bigBlindAmount);
   // Big blind gets option to act preflop, so don't mark as acted yet
   
-  gameState.pot += smallBlindAmount + bigBlindAmount;
+  gameState.pot = Math.round(gameState.pot + smallBlindAmount + bigBlindAmount);
   
   if (smallBlindPlayer.chips === 0) smallBlindPlayer.isAllIn = true;
   if (bigBlindPlayer.chips === 0) bigBlindPlayer.isAllIn = true;
@@ -216,10 +219,10 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       
     case 'call':
       const callAmount = Math.min(currentPlayer.chips, newState.currentBet - currentPlayer.currentBet);
-      currentPlayer.chips = Math.round((currentPlayer.chips - callAmount) * 100) / 100; // Fix floating point precision
-      currentPlayer.currentBet += callAmount;
-      currentPlayer.totalContribution += callAmount;
-      newState.pot += callAmount;
+      currentPlayer.chips = Math.round(currentPlayer.chips - callAmount);
+      currentPlayer.currentBet = Math.round(currentPlayer.currentBet + callAmount);
+      currentPlayer.totalContribution = Math.round(currentPlayer.totalContribution + callAmount);
+      newState.pot = Math.round(newState.pot + callAmount);
       if (currentPlayer.chips <= 0) {
         currentPlayer.chips = 0;
         currentPlayer.isAllIn = true;
@@ -235,20 +238,20 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       // If player can't cover the full raise amount, it becomes an all-in
       if (additionalBet < raiseAmount - currentPlayer.currentBet && additionalBet === currentPlayer.chips) {
         currentPlayer.chips = 0;
-        currentPlayer.currentBet += additionalBet;
-        currentPlayer.totalContribution += additionalBet;
-        newState.pot += additionalBet;
+        currentPlayer.currentBet = Math.round(currentPlayer.currentBet + additionalBet);
+        currentPlayer.totalContribution = Math.round(currentPlayer.totalContribution + additionalBet);
+        newState.pot = Math.round(newState.pot + additionalBet);
         currentPlayer.isAllIn = true;
         // Only update currentBet if this all-in is actually a raise
         if (currentPlayer.currentBet > newState.currentBet) {
-          newState.currentBet = currentPlayer.currentBet;
+          newState.currentBet = Math.round(currentPlayer.currentBet);
         }
       } else {
-        currentPlayer.chips = Math.round((currentPlayer.chips - additionalBet) * 100) / 100; // Fix floating point precision
-        currentPlayer.currentBet += additionalBet;
-        currentPlayer.totalContribution += additionalBet;
-        newState.pot += additionalBet;
-        newState.currentBet = currentPlayer.currentBet;
+        currentPlayer.chips = Math.round(currentPlayer.chips - additionalBet);
+        currentPlayer.currentBet = Math.round(currentPlayer.currentBet + additionalBet);
+        currentPlayer.totalContribution = Math.round(currentPlayer.totalContribution + additionalBet);
+        newState.pot = Math.round(newState.pot + additionalBet);
+        newState.currentBet = Math.round(currentPlayer.currentBet);
         if (currentPlayer.chips <= 0) {
           currentPlayer.chips = 0;
           currentPlayer.isAllIn = true;
@@ -258,13 +261,12 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       
     case 'all-in':
       const allInAmount = currentPlayer.chips;
-      const previousBet = currentPlayer.currentBet;
       currentPlayer.chips = 0;
-      currentPlayer.currentBet += allInAmount;
-      currentPlayer.totalContribution += allInAmount;
-      newState.pot += allInAmount;
+      currentPlayer.currentBet = Math.round(currentPlayer.currentBet + allInAmount);
+      currentPlayer.totalContribution = Math.round(currentPlayer.totalContribution + allInAmount);
+      newState.pot = Math.round(newState.pot + allInAmount);
       const wasRaise = currentPlayer.currentBet > newState.currentBet;
-      newState.currentBet = Math.max(newState.currentBet, currentPlayer.currentBet);
+      newState.currentBet = Math.round(Math.max(newState.currentBet, currentPlayer.currentBet));
       currentPlayer.isAllIn = true;
       
       // If this all-in is a raise, reset hasActedInRound for other players
@@ -428,7 +430,7 @@ function determineWinner(gameState: GameState): void {
   const startingChips = (gameState as any).handStartingChips || gameState.players.map(p => ({ id: p.id, chips: p.chips }));
   
   if (activePlayers.length === 1) {
-    activePlayers[0].chips += gameState.pot;
+    activePlayers[0].chips = Math.round(activePlayers[0].chips + gameState.pot);
     gameState.pot = 0;
     gameState.isGameActive = false;
     gameState.currentPlayerIndex = -1; // Clear turn highlight
@@ -463,7 +465,7 @@ function determineWinner(gameState: GameState): void {
     const winnerShare = Math.floor(sidePot.amount / winners.length);
     
     winners.forEach(winner => {
-      winner.player.chips += winnerShare;
+      winner.player.chips = Math.round(winner.player.chips + winnerShare);
       if (!allWinnerIds.includes(winner.player.id)) {
         allWinnerIds.push(winner.player.id);
       }

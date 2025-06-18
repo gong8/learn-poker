@@ -20,69 +20,125 @@ const GameControls: React.FC<GameControlsProps> = ({
   isBigBlind = false,
   isPreflop = false
 }) => {
-  // For betting, the amount should be the total bet amount (current bet + raise)
   const minBetAmount = currentBet + minRaise;
+  const maxBetAmount = currentBet + playerChips;
   const [betAmount, setBetAmount] = useState(minBetAmount);
+  const [customBet, setCustomBet] = useState(false);
 
-  const handleAction = (action: Action) => {
+  const handleAction = (action: Action, amount?: number) => {
     if (action === 'bet' || action === 'raise') {
-      onAction(action, betAmount);
+      onAction(action, amount || betAmount);
     } else {
       onAction(action);
     }
   };
 
-  const showBigBlindMessage = isBigBlind && isPreflop && currentBet === 0 && !validActions.includes('fold');
+  const roundToBigBlindMultiple = (amount: number) => {
+    return Math.round(Math.max(minRaise, Math.round(amount / minRaise) * minRaise));
+  };
+
+  const getPresetAmounts = () => {
+    const pot = currentBet > 0 ? currentBet * 2 : 15; // Estimate pot size (SB 5 + BB 10)
+    const presets = [
+      { label: 'Min', amount: minBetAmount },
+      { label: '1/2 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(pot * 0.5)), maxBetAmount) },
+      { label: '3/4 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(pot * 0.75)), maxBetAmount) },
+      { label: 'Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + pot), maxBetAmount) },
+      { label: 'All In', amount: playerChips, displayAmount: playerChips }
+    ];
+    return presets.filter(preset => preset.amount >= minBetAmount && preset.amount <= maxBetAmount);
+  };
+
+  const showBettingControls = validActions.includes('bet') || validActions.includes('raise');
   
   return (
-    <div className="game-controls">
-      {showBigBlindMessage && (
-        <div className="big-blind-message">
-          <span>💡 As big blind, you can check or raise (no need to fold with no raises)</span>
+    <div className="game-controls-modern">
+      <div className="controls-container">
+        <div className="action-section">
+          <div className="primary-actions">
+            {validActions.filter(action => !['bet', 'raise'].includes(action)).map(action => {
+              let buttonText = action.charAt(0).toUpperCase() + action.slice(1);
+              
+              if (action === 'call') {
+                buttonText = `Call ${currentBet}`;
+              }
+              
+              return (
+                <button
+                  key={action}
+                  className={`action-btn action-btn-${action}`}
+                  onClick={() => handleAction(action)}
+                >
+                  {buttonText}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
-      <div className="action-buttons">
-        {validActions.map(action => {
-          let buttonText = action.charAt(0).toUpperCase() + action.slice(1);
-          
-          if (action === 'call') {
-            buttonText = `Call ${currentBet}`;
-          }
-          
-          return (
-            <button
-              key={action}
-              className={`action-button ${action}`}
-              onClick={() => handleAction(action)}
-              disabled={!validActions.includes(action)}
-            >
-              {buttonText}
-            </button>
-          );
-        })}
+
+        {showBettingControls && (
+          <div className="betting-section">
+            <div className="section-header">
+              <h4>Betting</h4>
+              <button 
+                className={`toggle-btn ${customBet ? 'active' : ''}`}
+                onClick={() => setCustomBet(!customBet)}
+              >
+                Custom
+              </button>
+            </div>
+            
+            {!customBet ? (
+              <div className="preset-bets">
+                {getPresetAmounts().map((preset, index) => (
+                  <button
+                    key={index}
+                    className="preset-bet-btn"
+                    onClick={() => handleAction(
+                      preset.label === 'All In' ? 'all-in' : (validActions.includes('bet') ? 'bet' : 'raise'), 
+                      preset.label === 'All In' ? undefined : preset.amount
+                    )}
+                  >
+                    <div className="preset-label">{preset.label}</div>
+                    <div className="preset-amount">{preset.displayAmount || preset.amount}</div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="custom-bet">
+                <div className="bet-input-group">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(minBetAmount, Math.min(maxBetAmount, parseInt(e.target.value) || 0)))}
+                    min={minBetAmount}
+                    max={maxBetAmount}
+                    className="bet-input"
+                  />
+                  <button
+                    className="action-btn action-btn-bet"
+                    onClick={() => handleAction(validActions.includes('bet') ? 'bet' : 'raise')}
+                  >
+                    {validActions.includes('bet') ? 'Bet' : 'Raise'}
+                  </button>
+                </div>
+                <input
+                  type="range"
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(parseInt(e.target.value))}
+                  min={minBetAmount}
+                  max={maxBetAmount}
+                  className="bet-slider"
+                />
+                <div className="bet-range">
+                  <span>{minBetAmount}</span>
+                  <span>{maxBetAmount}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      
-      {(validActions.includes('bet') || validActions.includes('raise')) && (
-        <div className="bet-controls">
-          <label htmlFor="bet-amount">Bet Amount:</label>
-          <input
-            id="bet-amount"
-            type="number"
-            value={betAmount}
-            onChange={(e) => setBetAmount(Math.max(minBetAmount, Math.min(playerChips + currentBet, parseInt(e.target.value) || 0)))}
-            min={minBetAmount}
-            max={playerChips + currentBet}
-          />
-          <input
-            type="range"
-            value={betAmount}
-            onChange={(e) => setBetAmount(parseInt(e.target.value))}
-            min={minBetAmount}
-            max={playerChips + currentBet}
-            className="bet-slider"
-          />
-        </div>
-      )}
     </div>
   );
 };

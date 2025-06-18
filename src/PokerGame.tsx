@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameState, Action, PlayerAnalysis } from './types';
+import { GameState, Action, PlayerAnalysis, BotBehavior } from './types';
 import { createInitialGameState, startNewHand, processPlayerAction, getValidActions } from './game-engine';
 import { makeBotDecision } from './bot-ai';
 import { analyzePlayer } from './card-analysis';
@@ -19,12 +19,13 @@ const PokerGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [showdown, setShowdown] = useState(false);
   const [playerAnalysis, setPlayerAnalysis] = useState<PlayerAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showEliminationModal, setShowEliminationModal] = useState(false);
 
-  const startGame = (botCount: number) => {
-    const initialState = createInitialGameState(1, botCount);
+  const startGame = (botCount: number, botConfigs: BotBehavior[]) => {
+    const initialState = createInitialGameState(1, botCount, botConfigs);
     const newGameState = startNewHand(initialState);
     setGameState(newGameState);
     setShowdown(false);
@@ -54,6 +55,7 @@ const PokerGame: React.FC = () => {
       setShowdown(true);
     }
   };
+
 
   useEffect(() => {
     if (!gameState || !gameState.isGameActive || gameState.currentPlayerIndex < 0) return;
@@ -96,18 +98,33 @@ const PokerGame: React.FC = () => {
 
       const humanPlayerIndex = gameState.players.indexOf(humanPlayer);
       const isHumanTurn = gameState.currentPlayerIndex === humanPlayerIndex;
-      const analysis = analyzePlayer(gameState, humanPlayerIndex);
       
-      // Only update recommendation if it's human's turn or if there's no current analysis
-      if (isHumanTurn || !playerAnalysis) {
-        setPlayerAnalysis(analysis);
-      } else {
-        // Keep the same recommendation but update other stats
-        setPlayerAnalysis(prev => prev ? {
-          ...analysis,
-          recommendation: prev.recommendation
-        } : analysis);
-      }
+      // Run analysis asynchronously to avoid blocking UI
+      setIsAnalyzing(true);
+      
+      // Use setTimeout to defer analysis until after render
+      const analysisTimeout = setTimeout(async () => {
+        try {
+          const analysis = await analyzePlayer(gameState, humanPlayerIndex);
+          
+          // Only update recommendation if it's human's turn or if there's no current analysis
+          if (isHumanTurn || !playerAnalysis) {
+            setPlayerAnalysis(analysis);
+          } else {
+            // Keep the same recommendation but update other stats
+            setPlayerAnalysis(prev => prev ? {
+              ...analysis,
+              recommendation: prev.recommendation
+            } : analysis);
+          }
+        } catch (error) {
+          console.error('Analysis failed:', error);
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }, 0);
+      
+      return () => clearTimeout(analysisTimeout);
     }
   }, [gameState, showEliminationModal]);
 
@@ -131,14 +148,30 @@ const PokerGame: React.FC = () => {
   };
 
   return (
-    <div className="poker-game">
-      <div className="game-header">
-        <div className="header-top">
-          <h1>Learn Poker</h1>
-          <div style={{ display: 'flex', gap: '8px' }}>
+    <div className="poker-game-modern">
+      <div className="game-header-modern">
+        <div className="header-content">
+          <div className="title-section">
+            <h1>Learn Poker</h1>
+            <div className="game-info-compact">
+              <div className="info-item phase">
+                <span className="info-label">Phase</span>
+                <span className="info-value">{getPhaseDisplay()}</span>
+              </div>
+              <div className="info-item pot">
+                <span className="info-label">Pot</span>
+                <span className="info-value">{Math.floor(gameState.pot).toLocaleString()}</span>
+              </div>
+              <div className="info-item bet">
+                <span className="info-label">{gameState.currentBet > 0 ? 'To Call' : 'No Bet'}</span>
+                <span className="info-value">{gameState.currentBet > 0 ? Math.floor(gameState.currentBet).toLocaleString() : '—'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="header-actions">
             {gameState && (
               <button
-                className="history-button"
+                className="header-btn history-btn"
                 onClick={() => setShowHandHistory(true)}
                 title="Hand History"
               >
@@ -146,7 +179,7 @@ const PokerGame: React.FC = () => {
               </button>
             )}
             <button
-              className="settings-button"
+              className="header-btn settings-btn"
               onClick={() => setShowSettingsModal(true)}
               title="Game Settings"
             >
@@ -154,19 +187,13 @@ const PokerGame: React.FC = () => {
             </button>
           </div>
         </div>
-        <div className="game-info">
-          <div className="phase">Phase: {getPhaseDisplay()}</div>
-          <div className="pot">Pot: {gameState.pot}</div>
-          <div className="current-bet">Current Bet: {gameState.currentBet}</div>
-        </div>
       </div>
 
-      <div className="game-layout">
-        <div className="game-main">
-          <div className="poker-table">
-            <div className="community-cards">
-              <h3>Community Cards</h3>
-              <div className="cards">
+      <div className="game-layout-modern">
+        <div className="game-main-modern">
+          <div className="poker-table-modern">
+            <div className="community-section">
+              <div className="community-cards-grid">
                 {Array.from({ length: 5 }, (_, index) => (
                   <Card
                     key={index}
@@ -178,7 +205,7 @@ const PokerGame: React.FC = () => {
               </div>
             </div>
 
-            <div className="players">
+            <div className="players-grid-modern">
               {gameState.players.map((player, index) => {
                 const isWinner = !gameState.isGameActive && 
                   gameState.lastHandChipChanges.some(change => 
@@ -203,22 +230,22 @@ const PokerGame: React.FC = () => {
           </div>
 
           {!gameState.isGameActive ? (
-            <div className="game-over">
-              <div className="game-over-header">
+            <div className="game-over-modern">
+              <div className="results-header">
                 <h2>Hand Complete</h2>
-                <button onClick={startNewRound} className="new-hand-button primary">
+                <button onClick={startNewRound} className="new-hand-btn">
                   Start New Hand
                 </button>
               </div>
-              <div className="hand-results-layout">
-                <div className="hand-results-left">
+              <div className="results-content">
+                <div className="results-left">
                   <HandSummaryComponent summaries={gameState.lastHandSummaries} />
                 </div>
-                <div className="hand-results-right">
+                <div className="results-right">
                   {gameState.lastHandChipChanges.length > 0 && (
-                    <div className="chip-changes-summary">
-                      <h3>Chip Changes This Hand</h3>
-                      <table className="chip-changes-table">
+                    <div className="chip-changes-modern">
+                      <h3>Chip Changes</h3>
+                      <table className="chip-table">
                         <thead>
                           <tr>
                             <th>Player</th>
@@ -231,11 +258,11 @@ const PokerGame: React.FC = () => {
                           {gameState.lastHandChipChanges.map(change => (
                             <tr key={change.playerId}>
                               <td className="player-name">{change.playerName}</td>
-                              <td className="bet-info">{change.totalBet}</td>
+                              <td className="bet-amount">{Math.floor(change.totalBet).toLocaleString()}</td>
                               <td className={`chip-change ${change.change >= 0 ? 'positive' : 'negative'}`}>
-                                {change.change >= 0 ? '+' : ''}{change.change}
+                                {change.change >= 0 ? '+' : ''}{Math.floor(change.change).toLocaleString()}
                               </td>
-                              <td className="final-chips">{change.finalChips}</td>
+                              <td className="total-chips">{Math.floor(change.finalChips).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -249,20 +276,23 @@ const PokerGame: React.FC = () => {
             <GameControls
               validActions={validActions}
               onAction={handlePlayerAction}
-              currentBet={gameState.currentBet - humanPlayer.currentBet}
+              currentBet={Math.floor(Math.max(0, gameState.currentBet - humanPlayer.currentBet))}
               playerChips={humanPlayer.chips}
               minRaise={gameState.bigBlind}
               isBigBlind={gameState.players.indexOf(humanPlayer) === gameState.bigBlindIndex}
               isPreflop={gameState.phase === 'preflop'}
             />
           ) : (
-            <div className="waiting">
-              {gameState.phase === 'showdown' ? 'Showdown' : 'Waiting for other players...'}
+            <div className="waiting-modern">
+              <div className="waiting-content">
+                <div className="waiting-spinner"></div>
+                <span>{gameState.phase === 'showdown' ? 'Showdown in progress...' : 'Waiting for other players...'}</span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="game-sidebar">
+        <div className="game-sidebar-modern">
           <PlayerAnalysisPanel 
             analysis={playerAnalysis || {
               handStrength: 0,
@@ -279,6 +309,9 @@ const PokerGame: React.FC = () => {
               winProbability: 0
             }}
             isVisible={!!(gameState.isGameActive && humanPlayer?.cards && humanPlayer.cards.length > 0)}
+            isLoading={isAnalyzing}
+            isActive={gameState.isGameActive && humanPlayer && !humanPlayer.isFolded && !humanPlayer.isEliminated}
+            gamePhase={gameState.phase}
           />
         </div>
       </div>

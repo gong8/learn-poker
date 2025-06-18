@@ -771,7 +771,20 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
   return 'fold';
 }
 
-export function analyzePlayer(gameState: GameState, playerIndex: number): PlayerAnalysis {
+export async function analyzePlayer(gameState: GameState, playerIndex: number): Promise<PlayerAnalysis> {
+  // Use the new advanced analysis engine
+  try {
+    const { analyzePlayer: analyzePlayerAdvanced } = require('./advanced-poker-analysis');
+    return await analyzePlayerAdvanced(gameState, playerIndex);
+  } catch (error) {
+    // Fallback to legacy analysis if advanced engine fails
+    console.warn('Advanced analysis failed, falling back to legacy:', error);
+    return analyzePlayerLegacy(gameState, playerIndex);
+  }
+}
+
+// Legacy analysis function for backward compatibility
+function analyzePlayerLegacy(gameState: GameState, playerIndex: number): PlayerAnalysis {
   const player = gameState.players[playerIndex];
   const { deckTracker } = gameState;
   

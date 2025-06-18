@@ -5,12 +5,24 @@ import { useSettings } from '../contexts/SettingsContext';
 interface PlayerAnalysisProps {
   analysis: PlayerAnalysis;
   isVisible: boolean;
+  isLoading?: boolean;
+  isActive?: boolean;
+  gamePhase?: string;
 }
 
-const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisible }) => {
+const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ 
+  analysis, 
+  isVisible, 
+  isLoading = false, 
+  isActive = true,
+  gamePhase = 'preflop'
+}) => {
   const { settings } = useSettings();
   
   if (!isVisible) return null;
+  
+  // Don't show detailed hand analysis on preflop (but show basic info)
+  const showHandAnalysis = gamePhase !== 'preflop' || analysis.currentHandRank !== 'high-card';
 
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
@@ -50,27 +62,31 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({ analysis, isVisibl
   const bestDraw = getBestDraw();
 
   return (
-    <div className="player-analysis-panel">
+    <div className={`player-analysis-panel ${!isActive ? 'inactive' : ''}`}>
       <h3>Hand Helper</h3>
       
       {/* Current Hand Quality */}
       <div className="simple-analysis-card">
         <div className="analysis-header">
           <span className="analysis-title">Your Hand</span>
-          <span className="analysis-value">{analysis.currentHandRank.replace('-', ' ')}</span>
+          <span className="analysis-value">
+            {showHandAnalysis ? analysis.currentHandRank.replace('-', ' ') : '?'}
+          </span>
         </div>
-        <div className="quality-indicator">
-          <span className="quality-label">{getHandQuality(analysis.handStrength)}</span>
-          <div className="quality-bar">
-            <div 
-              className="quality-fill"
-              style={{ 
-                width: `${analysis.handStrength * 100}%`,
-                backgroundColor: `hsl(${analysis.handStrength * 120}, 70%, 50%)`
-              }}
-            />
+        {showHandAnalysis && (
+          <div className="quality-indicator">
+            <span className="quality-label">{getHandQuality(analysis.handStrength)}</span>
+            <div className="quality-bar">
+              <div 
+                className="quality-fill"
+                style={{ 
+                  width: `${analysis.handStrength * 100}%`,
+                  backgroundColor: `hsl(${analysis.handStrength * 120}, 70%, 50%)`
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Win Chances */}

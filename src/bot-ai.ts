@@ -1,10 +1,15 @@
-import { GameState, Player, Action, Card } from './types';
+import { GameState, Player, Action, Card, BotProfile } from './types';
 import { evaluateHand } from './poker-logic';
 import { getValidActions } from './game-engine';
+import { getRandomBotProfile } from './bot-profiles';
 
 export interface BotDecision {
   action: Action;
   betAmount?: number;
+}
+
+function roundToBigBlindMultiple(amount: number, bigBlind: number): number {
+  return Math.round(Math.max(bigBlind, Math.round(amount / bigBlind) * bigBlind));
 }
 
 export function makeBotDecision(gameState: GameState, botIndex: number): BotDecision {
@@ -15,17 +20,21 @@ export function makeBotDecision(gameState: GameState, botIndex: number): BotDeci
     return { action: 'fold' };
   }
   
+  // Ensure bot has a profile
+  if (!bot.botProfile) {
+    bot.botProfile = getRandomBotProfile();
+  }
+  
   const handStrength = calculateHandStrength(bot, gameState.communityCards);
   const potOdds = calculatePotOdds(gameState, bot);
   const position = calculatePosition(gameState, botIndex);
-  const aggressiveness = getAggressiveness(bot);
   
-  return makeDecisionBasedOnFactors(
+  return makeDecisionBasedOnProfile(
     validActions,
     handStrength,
     potOdds,
     position,
-    aggressiveness,
+    bot.botProfile,
     gameState,
     bot
   );
@@ -96,91 +105,118 @@ function calculatePosition(gameState: GameState, playerIndex: number): 'early' |
   return 'late';
 }
 
-function getAggressiveness(player: Player): number {
-  const hash = player.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return 0.3 + (hash % 100) / 250;
-}
-
-function makeDecisionBasedOnFactors(
+function makeDecisionBasedOnProfile(
   validActions: Action[],
   handStrength: number,
   potOdds: number,
   position: 'early' | 'middle' | 'late',
-  aggressiveness: number,
+  profile: BotProfile,
   gameState: GameState,
   player: Player
 ): BotDecision {
   const random = Math.random();
   
-  // If no good actions available, fold (but this should rarely happen with our logic)
-  if (validActions.length === 0 || (!validActions.includes('call') && !validActions.includes('check') && !validActions.includes('fold'))) {
-    return validActions.includes('fold') ? { action: 'fold' } : { action: validActions[0] };
-  }
-  
-  const positionMultiplier = position === 'late' ? 1.2 : position === 'middle' ? 1.0 : 0.8;
-  const adjustedHandStrength = handStrength * positionMultiplier;
-  
-  if (adjustedHandStrength < 0.2) {
-    if (validActions.includes('check') && random < 0.7) {
-      return { action: 'check' };
-    }
-    return validActions.includes('fold') ? { action: 'fold' } : { action: 'check' };
-  }
-  
-  if (adjustedHandStrength < 0.4) {
-    if (validActions.includes('check')) {
-      return { action: 'check' };
-    }
-    if (potOdds < 0.3 && validActions.includes('call')) {
-      return { action: 'call' };
-    }
+  // If no good actions available, fold
+  if (validActions.length === 0) {
     return { action: 'fold' };
   }
   
-  if (adjustedHandStrength < 0.6) {
-    if (validActions.includes('check') && random < 0.4) {
+  // Apply randomness factor from profile
+  const randomFactor = profile.behavior === 'random' 
+    ? 0.7 + (random * 0.6) // 0.7 to 1.3 for random behavior
+    : 0.9 + (random * profile.randomnessFactor); // Much less randomness for other profiles
+  
+  // Position adjustment
+  const positionMultiplier = position === 'late' ? 1.2 : position === 'middle' ? 1.05 : 0.95;
+  const adjustedHandStrength = handStrength * positionMultiplier * randomFactor;
+  
+  // Check if we should fold based on profile threshold
+  if (adjustedHandStrength < profile.foldThreshold) {
+    if (validActions.includes('check')) {
+      return { action: 'check' };
+    }
+    // Only fold if pot odds are bad or profile says to fold easily
+    if (validActions.includes('fold') && (potOdds > 0.3 || random < (profile.foldThreshold * 2))) {
+      return { action: 'fold' };
+    }
+    if (validActions.includes('call') && potOdds < 0.25) {
+      return { action: 'call' };
+    }
+    return validActions.includes('check') ? { action: 'check' } : { action: 'fold' };
+  }
+  
+  // Medium strength hands
+  if (adjustedHandStrength < 0.65) {
+    // Bluff occasionally based on profile
+    if (adjustedHandStrength < 0.4 && random < profile.bluffFrequency && validActions.includes('bet')) {
+      const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier * 0.5);
+      const betAmount = roundToBigBlindMultiple(rawBetAmount, gameState.bigBlind);
+      return { action: 'bet', betAmount };
+    }
+    
+    // Aggressive profiles bet/raise more with medium hands
+    if (profile.aggressiveness > 0.5 && validActions.includes('bet') && random < profile.aggressiveness * 0.6) {
+      const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier);
+      const betAmount = roundToBigBlindMultiple(rawBetAmount, gameState.bigBlind);
+      return { action: 'bet', betAmount };
+    }
+    
+    if (profile.aggressiveness > 0.6 && validActions.includes('raise') && random < profile.aggressiveness * 0.5) {
+      const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier);
+      const minRaise = gameState.currentBet + gameState.bigBlind;
+      const betAmount = roundToBigBlindMultiple(Math.max(minRaise, rawBetAmount), gameState.bigBlind);
+      return { action: 'raise', betAmount };
+    }
+    
+    // Default to passive play for medium hands
+    if (validActions.includes('check') && random < 0.6) {
       return { action: 'check' };
     }
     if (validActions.includes('call')) {
       return { action: 'call' };
     }
-    if (aggressiveness > 0.6 && validActions.includes('bet') && random < 0.3) {
-      const betAmount = Math.min(player.chips, gameState.pot * 0.5);
-      return { action: 'bet', betAmount };
-    }
     return { action: 'check' };
   }
   
-  if (adjustedHandStrength >= 0.8) {
-    // Very strong hands - consider all-in with high aggression
-    if (aggressiveness > 0.7 && validActions.includes('all-in') && random < 0.4) {
+  // Strong hands - be more aggressive based on profile
+  if (adjustedHandStrength >= 0.65) {
+    // All-in with very strong hands (but much more controlled)
+    if (adjustedHandStrength >= profile.allInThreshold && validActions.includes('all-in') && random < (profile.aggressiveness * 0.3)) {
       return { action: 'all-in' };
     }
-    if (aggressiveness > 0.5 && validActions.includes('raise') && random < 0.7) {
-      const betAmount = Math.min(player.chips, gameState.pot * (1 + aggressiveness));
+    
+    // Raise with strong hands
+    if (validActions.includes('raise') && random < profile.aggressiveness * 0.8) {
+      const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier * 1.2);
+      const minRaise = gameState.currentBet + gameState.bigBlind;
+      const betAmount = roundToBigBlindMultiple(Math.max(minRaise, rawBetAmount), gameState.bigBlind);
       return { action: 'raise', betAmount };
     }
-    if (validActions.includes('bet') && random < 0.6) {
-      const betAmount = Math.min(player.chips, gameState.pot * 0.75);
+    
+    // Bet with strong hands
+    if (validActions.includes('bet') && random < 0.8) {
+      const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier);
+      const betAmount = roundToBigBlindMultiple(rawBetAmount, gameState.bigBlind);
       return { action: 'bet', betAmount };
+    }
+    
+    // Always call with strong hands
+    if (validActions.includes('call')) {
+      return { action: 'call' };
     }
   }
   
-  // If call is available, use it as fallback
-  if (validActions.includes('call')) {
-    return { action: 'call' };
-  }
-  
-  // If check is available, use it as fallback
+  // Fallback logic
   if (validActions.includes('check')) {
     return { action: 'check' };
   }
-  
-  // Last resort - if only all-in is available (shouldn't happen often)
-  if (validActions.includes('all-in')) {
-    return { action: 'all-in' };
+  if (validActions.includes('call')) {
+    return { action: 'call' };
+  }
+  if (validActions.includes('fold')) {
+    return { action: 'fold' };
   }
   
-  // Should never reach here with proper valid actions, but safety fallback
-  return validActions.length > 0 ? { action: validActions[0] } : { action: 'fold' };
+  // Last resort
+  return { action: validActions[0] };
 }
