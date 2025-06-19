@@ -5,6 +5,7 @@
 
 import { Card, Rank } from './types';
 import { evaluateHand } from './poker-logic';
+import { HAND_EVALUATION, EQUITY_CALC, CARD_VALUES } from './constants';
 
 export interface EquityResult {
   equity: number;
@@ -31,15 +32,8 @@ export interface MonteCarloOptions {
   deadCards: Card[];
 }
 
-// Common draw probabilities from research data
-export const DRAW_PROBABILITIES = {
-  flushDraw: { outs: 9, turnRiver: 35, turnOnly: 19 },
-  openEnded: { outs: 8, turnRiver: 31, turnOnly: 17 },
-  gutshot: { outs: 4, turnRiver: 17, turnOnly: 9 },
-  flushAndStraight: { outs: 15, turnRiver: 54, turnOnly: 32 },
-  overcards: { outs: 6, turnRiver: 24, turnOnly: 13 },
-  threeOuts: { outs: 3, turnRiver: 13, turnOnly: 7 }
-};
+// Common draw probabilities from research data (using constants)
+export const DRAW_PROBABILITIES = EQUITY_CALC.DRAW_ODDS;
 
 // Hand strength distributions from research
 export const HAND_RANKINGS = {
@@ -62,7 +56,7 @@ export function calculateEquity(
   holeCards: Card[],
   communityCards: Card[],
   deadCards: Card[] = [],
-  options: MonteCarloOptions = { iterations: 10000, opponents: 1, deadCards: [] }
+  options: MonteCarloOptions = { iterations: EQUITY_CALC.DEFAULT_ITERATIONS, opponents: 1, deadCards: [] }
 ): EquityResult {
   if (holeCards.length !== 2) {
     throw new Error('Must provide exactly 2 hole cards');
@@ -156,7 +150,7 @@ function runMonteCarloSimulation(
  */
 function evaluateFinalHand(holeCards: Card[], communityCards: Card[]): EquityResult {
   const hand = evaluateHand([...holeCards, ...communityCards]);
-  const handStrength = hand.score / 7462; // Normalize to 0-1
+  const handStrength = hand.score / HAND_EVALUATION.MAX_HAND_SCORE; // Normalize to 0-1
   
   return {
     equity: handStrength,
@@ -219,7 +213,7 @@ function analyzeFlushDraw(allCards: Card[], remainingCards: Card[]): DrawEquity 
           turnProbability: cardsLeft >= 2 ? (outs / remainingCards.length) * 100 : 0,
           riverProbability: cardsLeft >= 1 ? (outs / remainingCards.length) * 100 : 0,
           turnAndRiverProbability: calculateTurnAndRiverProbability(outs, remainingCards.length, cardsLeft),
-          equity: (outs / remainingCards.length) * 0.8 // Flush equity approximation
+          equity: (outs / remainingCards.length) * EQUITY_CALC.DRAW_EQUITY.FLUSH // Flush equity approximation
         };
       }
     }
@@ -262,7 +256,7 @@ function analyzeStraightDraws(allCards: Card[], remainingCards: Card[]): DrawEqu
           turnProbability: cardsLeft >= 2 ? (outs / remainingCards.length) * 100 : 0,
           riverProbability: cardsLeft >= 1 ? (outs / remainingCards.length) * 100 : 0,
           turnAndRiverProbability: calculateTurnAndRiverProbability(outs, remainingCards.length, cardsLeft),
-          equity: (outs / remainingCards.length) * 0.6 // Straight equity approximation
+          equity: (outs / remainingCards.length) * EQUITY_CALC.DRAW_EQUITY.STRAIGHT // Straight equity approximation
         });
       }
     }
@@ -293,7 +287,7 @@ function analyzePairDraws(
         turnProbability: cardsLeft >= 2 ? (outs / remainingCards.length) * 100 : 0,
         riverProbability: cardsLeft >= 1 ? (outs / remainingCards.length) * 100 : 0,
         turnAndRiverProbability: calculateTurnAndRiverProbability(outs, remainingCards.length, cardsLeft),
-        equity: (outs / remainingCards.length) * 0.9 // Set equity approximation
+        equity: (outs / remainingCards.length) * EQUITY_CALC.DRAW_EQUITY.SET // Set equity approximation
       });
     }
   } else {
@@ -308,7 +302,7 @@ function analyzePairDraws(
           turnProbability: cardsLeft >= 2 ? (outs / remainingCards.length) * 100 : 0,
           riverProbability: cardsLeft >= 1 ? (outs / remainingCards.length) * 100 : 0,
           turnAndRiverProbability: calculateTurnAndRiverProbability(outs, remainingCards.length, cardsLeft),
-          equity: (outs / remainingCards.length) * 0.4 // Pair equity approximation
+          equity: (outs / remainingCards.length) * EQUITY_CALC.DRAW_EQUITY.PAIR // Pair equity approximation
         });
       }
     }
@@ -339,7 +333,7 @@ function calculateHandStrength(holeCards: Card[], communityCards: Card[]): numbe
   }
 
   const hand = evaluateHand(allCards);
-  return hand.score / 7462; // Normalize based on total possible hand rankings
+  return hand.score / HAND_EVALUATION.MAX_HAND_SCORE; // Normalize based on maximum possible score
 }
 
 /**
@@ -358,29 +352,29 @@ function calculatePreFlopStrength(holeCards: Card[]): number {
   let strength = 0;
 
   if (isPair) {
-    if (rank1 >= 12) strength = 0.9; // AA, KK, QQ
-    else if (rank1 >= 9) strength = 0.8; // JJ, TT, 99
-    else if (rank1 >= 6) strength = 0.6; // 88, 77, 66
-    else strength = 0.4; // Low pairs
+    if (rank1 >= CARD_VALUES.RANKS.QUEEN) strength = EQUITY_CALC.PREFLOP_STRENGTH.PREMIUM_PAIRS; // AA, KK, QQ
+    else if (rank1 >= CARD_VALUES.RANKS.NINE) strength = EQUITY_CALC.PREFLOP_STRENGTH.HIGH_PAIRS; // JJ, TT, 99
+    else if (rank1 >= CARD_VALUES.RANKS.SIX) strength = EQUITY_CALC.PREFLOP_STRENGTH.MEDIUM_PAIRS; // 88, 77, 66
+    else strength = EQUITY_CALC.PREFLOP_STRENGTH.LOW_PAIRS; // Low pairs
   } else {
     const highCard = Math.max(rank1, rank2);
     const lowCard = Math.min(rank1, rank2);
 
-    if (highCard === 14) { // Ace
-      if (lowCard >= 12) strength = 0.85; // AK, AQ
-      else if (lowCard >= 10) strength = 0.75; // AJ, AT
-      else if (lowCard >= 8) strength = 0.65; // A9, A8
-      else strength = 0.5; // A7 and below
-    } else if (highCard >= 12) { // K or Q
-      if (lowCard >= 10) strength = 0.7; // KQ, KJ, QJ
-      else if (lowCard >= 8) strength = 0.6; // K9, Q9, etc.
-      else strength = 0.4;
+    if (highCard === CARD_VALUES.RANKS.ACE) { // Ace
+      if (lowCard >= CARD_VALUES.RANKS.QUEEN) strength = EQUITY_CALC.PREFLOP_STRENGTH.ACE_PREMIUM; // AK, AQ
+      else if (lowCard >= CARD_VALUES.RANKS.TEN) strength = EQUITY_CALC.PREFLOP_STRENGTH.ACE_GOOD; // AJ, AT
+      else if (lowCard >= CARD_VALUES.RANKS.EIGHT) strength = EQUITY_CALC.PREFLOP_STRENGTH.ACE_MEDIUM; // A9, A8
+      else strength = EQUITY_CALC.PREFLOP_STRENGTH.ACE_WEAK; // A7 and below
+    } else if (highCard >= CARD_VALUES.RANKS.QUEEN) { // K or Q
+      if (lowCard >= CARD_VALUES.RANKS.TEN) strength = EQUITY_CALC.PREFLOP_STRENGTH.BROADWAY_PREMIUM; // KQ, KJ, QJ
+      else if (lowCard >= CARD_VALUES.RANKS.EIGHT) strength = EQUITY_CALC.PREFLOP_STRENGTH.BROADWAY_GOOD; // K9, Q9, etc.
+      else strength = EQUITY_CALC.PREFLOP_STRENGTH.BROADWAY_WEAK;
     } else {
       strength = 0.3;
     }
 
-    if (suited) strength += 0.1; // Suited bonus
-    if (gap <= 4 && !isPair) strength += 0.05; // Connector bonus
+    if (suited) strength += EQUITY_CALC.PREFLOP_STRENGTH.SUITED_BONUS; // Suited bonus
+    if (gap <= 4 && !isPair) strength += EQUITY_CALC.PREFLOP_STRENGTH.CONNECTOR_BONUS; // Connector bonus
   }
 
   return Math.min(strength, 1);
@@ -428,8 +422,10 @@ function shuffleArray<T>(array: T[]): void {
  */
 function getRankValue(rank: Rank): number {
   const rankValues: Record<Rank, number> = {
-    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-    'J': 11, 'Q': 12, 'K': 13, 'A': 14
+    '2': CARD_VALUES.RANKS.TWO, '3': CARD_VALUES.RANKS.THREE, '4': CARD_VALUES.RANKS.FOUR, 
+    '5': CARD_VALUES.RANKS.FIVE, '6': CARD_VALUES.RANKS.SIX, '7': CARD_VALUES.RANKS.SEVEN, 
+    '8': CARD_VALUES.RANKS.EIGHT, '9': CARD_VALUES.RANKS.NINE, '10': CARD_VALUES.RANKS.TEN,
+    'J': CARD_VALUES.RANKS.JACK, 'Q': CARD_VALUES.RANKS.QUEEN, 'K': CARD_VALUES.RANKS.KING, 'A': CARD_VALUES.RANKS.ACE
   };
   return rankValues[rank];
 }

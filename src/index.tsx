@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import PokerGame from './PokerGame';
 import { SettingsProvider } from './contexts/SettingsContext';
-import './styles.css';
+import './styles/index.css';
 
 const container = document.getElementById('root');
 if (!container) {

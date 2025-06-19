@@ -2,6 +2,24 @@ import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary, Ha
 import { createDeck, evaluateHand, getHandTypeDisplayName } from './poker-logic';
 import { createDeckTracker, updateDeckTracker } from './card-analysis';
 import { getBotProfile } from './bot-profiles';
+import { GAME_CONFIG, UI_CONFIG, RANDOMIZATION } from './constants';
+
+// Generic bot names that don't reveal behavior or numbering
+const BOT_NAMES = [
+  'Alex', 'Jordan', 'Casey', 'Riley', 'Morgan', 'Taylor', 'Avery', 'Quinn',
+  'Blake', 'Cameron', 'Devon', 'Ellis', 'Finley', 'Gray', 'Harper', 'Indigo',
+  'Jude', 'Kai', 'Lane', 'Max', 'Nova', 'Ocean', 'Parker', 'River',
+  'Sage', 'Tate', 'Vale', 'West', 'Zoe', 'Adrian', 'Blair', 'Cleo',
+  'Drew', 'Ember', 'Frost', 'Gale', 'Haven', 'Iris', 'Jules', 'Knox',
+  'Luna', 'Miles', 'Nash', 'Onyx', 'Phoenix', 'Quinn', 'Raven', 'Storm',
+  'Theo', 'Uma', 'Vega', 'Wren', 'Xander', 'Yuki', 'Zara', 'Aspen',
+  'Bryce', 'Cora', 'Dex', 'Eden', 'Felix', 'Gia', 'Hunter', 'Ivy',
+  'Jax', 'Kira', 'Leo', 'Mira', 'Nico', 'Olive', 'Paz', 'Reed',
+  'Skye', 'Tara', 'Uri', 'Vera', 'Win', 'Zane', 'Aria', 'Beck',
+  'Cruz', 'Dale', 'Ezra', 'Faye', 'Gus', 'Hale', 'Ione', 'Jett',
+  'Kade', 'Lux', 'Mae', 'Noel', 'Orion', 'Piper', 'Quin', 'Rue',
+  'Sly', 'Tru', 'Ula', 'Vex', 'Wade', 'Zia'
+];
 
 export function createInitialGameState(playerCount: number, botCount: number, botConfigs?: BotBehavior[]): GameState {
   const players: Player[] = [];
@@ -9,7 +27,7 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
   players.push({
     id: 'human',
     name: 'You',
-    chips: 100,
+    chips: GAME_CONFIG.STARTING_CHIPS,
     cards: [],
     isBot: false,
     isFolded: false,
@@ -20,12 +38,15 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
     isEliminated: false
   });
   
+  // Shuffle bot names to randomize them
+  const shuffledNames = [...BOT_NAMES].sort(() => Math.random() - RANDOMIZATION.SHUFFLE_OFFSET);
+  
   for (let i = 0; i < botCount; i++) {
     const botBehavior = botConfigs?.[i] || 'balanced';
     players.push({
       id: `bot-${i}`,
-      name: `Bot ${i + 1}`,
-      chips: 100,
+      name: shuffledNames[i] || `Player ${i + 2}`,
+      chips: GAME_CONFIG.STARTING_CHIPS,
       cards: [],
       isBot: true,
       isFolded: false,
@@ -49,8 +70,8 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
     phase: 'preflop',
     currentBet: 0,
     deck: createDeck(),
-    smallBlind: 5,
-    bigBlind: 10,
+    smallBlind: GAME_CONFIG.DEFAULT_SMALL_BLIND,
+    bigBlind: GAME_CONFIG.DEFAULT_BIG_BLIND,
     isGameActive: false,
     deckTracker: createDeckTracker(),
     lastHandChipChanges: [],
@@ -159,7 +180,7 @@ export function startNewHand(gameState: GameState): GameState {
 }
 
 function dealCards(gameState: GameState): void {
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < GAME_CONFIG.HOLE_CARDS_COUNT; i++) {
     for (const player of gameState.players) {
       if (!player.isEliminated && gameState.deck.length > 0) {
         const card = gameState.deck.pop()!;
@@ -294,18 +315,22 @@ function moveToNextPlayer(gameState: GameState): void {
   let attempts = 0;
   const maxAttempts = gameState.players.length;
   
-  while (attempts < maxAttempts && (gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn || gameState.players[nextIndex].isEliminated)) {
+  // Find the next player who can act (not folded, not all-in, not eliminated)
+  while (attempts < maxAttempts) {
+    const nextPlayer = gameState.players[nextIndex];
+    
+    // Check if this player can act
+    if (!nextPlayer.isFolded && !nextPlayer.isAllIn && !nextPlayer.isEliminated) {
+      gameState.currentPlayerIndex = nextIndex;
+      return;
+    }
+    
     nextIndex = (nextIndex + 1) % gameState.players.length;
     attempts++;
   }
   
   // If we've gone through all players and none can act, set currentPlayerIndex to -1
-  if (attempts >= maxAttempts || gameState.players[nextIndex].isFolded || gameState.players[nextIndex].isAllIn || gameState.players[nextIndex].isEliminated) {
-    gameState.currentPlayerIndex = -1;
-    return;
-  }
-  
-  gameState.currentPlayerIndex = nextIndex;
+  gameState.currentPlayerIndex = -1;
 }
 
 function isRoundComplete(gameState: GameState): boolean {
@@ -343,7 +368,22 @@ function isRoundComplete(gameState: GameState): boolean {
     return allBetsEqual;
   }
   
-  return allBetsEqual && allPlayersActed;
+  // Extra safety: prevent infinite loops by checking if we've gone around the table
+  // If everyone has acted and bets are equal, round should be complete
+  if (allBetsEqual && allPlayersActed) {
+    return true;
+  }
+  
+  // Emergency break: if we somehow get stuck, force completion
+  const playersWhoCanAct = activePlayers.filter(p => 
+    !p.hasActedInRound || p.currentBet < gameState.currentBet
+  );
+  
+  if (playersWhoCanAct.length === 0 && allBetsEqual) {
+    return true;
+  }
+  
+  return false;
 }
 
 function advanceToNextPhase(gameState: GameState): void {
@@ -362,15 +402,15 @@ function advanceToNextPhase(gameState: GameState): void {
   switch (gameState.phase) {
     case 'preflop':
       gameState.phase = 'flop';
-      dealCommunityCards(gameState, 3);
+      dealCommunityCards(gameState, GAME_CONFIG.FLOP_CARDS);
       break;
     case 'flop':
       gameState.phase = 'turn';
-      dealCommunityCards(gameState, 1);
+      dealCommunityCards(gameState, GAME_CONFIG.TURN_CARDS);
       break;
     case 'turn':
       gameState.phase = 'river';
-      dealCommunityCards(gameState, 1);
+      dealCommunityCards(gameState, GAME_CONFIG.RIVER_CARDS);
       break;
     case 'river':
       gameState.phase = 'showdown';
@@ -379,22 +419,29 @@ function advanceToNextPhase(gameState: GameState): void {
   }
   
   if (gameState.phase !== 'showdown') {
-    gameState.currentPlayerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
+    // Start with the player after the dealer for post-flop betting rounds
+    let nextIndex = (gameState.dealerIndex + 1) % gameState.players.length;
     let attempts = 0;
     const maxAttempts = gameState.players.length;
     
-    while (attempts < maxAttempts && (gameState.players[gameState.currentPlayerIndex].isFolded || gameState.players[gameState.currentPlayerIndex].isAllIn || gameState.players[gameState.currentPlayerIndex].isEliminated)) {
-      gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    // Find the first player who can act
+    while (attempts < maxAttempts) {
+      const nextPlayer = gameState.players[nextIndex];
+      
+      if (!nextPlayer.isFolded && !nextPlayer.isAllIn && !nextPlayer.isEliminated) {
+        gameState.currentPlayerIndex = nextIndex;
+        return;
+      }
+      
+      nextIndex = (nextIndex + 1) % gameState.players.length;
       attempts++;
     }
     
     // If no valid player found, force showdown
-    if (attempts >= maxAttempts) {
-      gameState.phase = 'showdown';
-      dealRemainingCommunityCards(gameState);
-      determineWinner(gameState);
-      return;
-    }
+    gameState.phase = 'showdown';
+    dealRemainingCommunityCards(gameState);
+    determineWinner(gameState);
+    return;
   }
 }
 
@@ -418,7 +465,7 @@ function dealCommunityCards(gameState: GameState, count: number): void {
 }
 
 function dealRemainingCommunityCards(gameState: GameState): void {
-  const cardsNeeded = 5 - gameState.communityCards.length;
+  const cardsNeeded = GAME_CONFIG.TOTAL_COMMUNITY_CARDS - gameState.communityCards.length;
   if (cardsNeeded > 0) {
     dealCommunityCards(gameState, cardsNeeded);
   }
@@ -445,12 +492,19 @@ function determineWinner(gameState: GameState): void {
   // Calculate side pots for proper all-in handling
   const sidePots = calculateSidePots(gameState);
   
+  // Validate that side pots total equals the main pot
+  const totalSidePotAmount = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
+  if (Math.abs(totalSidePotAmount - gameState.pot) > 1) { // Allow for rounding errors
+    console.warn(`Side pot total (${totalSidePotAmount}) doesn't match main pot (${gameState.pot})`);
+  }
+  
   const playerHands = activePlayers.map(player => ({
     player,
     hand: evaluateHand([...player.cards, ...gameState.communityCards])
   }));
   
   const allWinnerIds: string[] = [];
+  let totalDistributed = 0;
   
   // Distribute each side pot separately
   for (const sidePot of sidePots) {
@@ -463,9 +517,14 @@ function determineWinner(gameState: GameState): void {
     eligiblePlayers.sort((a, b) => b.hand.score - a.hand.score);
     const winners = eligiblePlayers.filter(ph => ph.hand.score === eligiblePlayers[0].hand.score);
     const winnerShare = Math.floor(sidePot.amount / winners.length);
+    const remainder = sidePot.amount - (winnerShare * winners.length);
     
-    winners.forEach(winner => {
-      winner.player.chips = Math.round(winner.player.chips + winnerShare);
+    winners.forEach((winner, index) => {
+      // Give remainder to first winner to handle odd chip distributions
+      const actualShare = winnerShare + (index === 0 ? remainder : 0);
+      winner.player.chips = Math.round(winner.player.chips + actualShare);
+      totalDistributed += actualShare;
+      
       if (!allWinnerIds.includes(winner.player.id)) {
         allWinnerIds.push(winner.player.id);
       }
@@ -484,34 +543,36 @@ function determineWinner(gameState: GameState): void {
 
 function calculateSidePots(gameState: GameState): Array<{ amount: number; eligiblePlayerIds: string[] }> {
   const allPlayers = [...gameState.players];
-  const activePlayers = allPlayers.filter(p => !p.isFolded);
+  const activePlayers = allPlayers.filter(p => !p.isFolded && !p.isEliminated);
   
-  // Get all unique contribution amounts from all players (not just active ones)
-  const contributionAmounts = Array.from(new Set(allPlayers.map(p => p.totalContribution))).sort((a, b) => a - b);
+  // Get all unique contribution amounts, sorted from lowest to highest
+  const contributionLevels = Array.from(new Set(allPlayers.map(p => p.totalContribution)))
+    .filter(amount => amount > 0)
+    .sort((a, b) => a - b);
   
   const sidePots: Array<{ amount: number; eligiblePlayerIds: string[] }> = [];
-  let previousContributionLevel = 0;
+  let previousLevel = 0;
   
-  for (const contributionLevel of contributionAmounts) {
-    if (contributionLevel === 0) continue; // Skip zero contributions
+  for (const currentLevel of contributionLevels) {
+    const levelDifference = currentLevel - previousLevel;
     
-    const contributionDifference = contributionLevel - previousContributionLevel;
+    if (levelDifference <= 0) continue;
     
-    // Count ALL players who contributed at least this level (including folded ones for pot calculation)
-    const contributingPlayers = allPlayers.filter(p => p.totalContribution >= contributionLevel);
+    // Count all players who contributed at least to this level (for pot size calculation)
+    const contributorsAtThisLevel = allPlayers.filter(p => p.totalContribution >= currentLevel);
     
-    // But only active players are eligible to win
-    const eligiblePlayers = activePlayers.filter(p => p.totalContribution >= contributionLevel);
+    // Only non-folded players who contributed at least to this level can win this pot
+    const eligibleWinners = activePlayers.filter(p => p.totalContribution >= currentLevel);
     
-    if (contributingPlayers.length > 0 && contributionDifference > 0) {
-      const potAmount = contributingPlayers.length * contributionDifference;
+    if (contributorsAtThisLevel.length > 0 && eligibleWinners.length > 0) {
+      const potAmount = contributorsAtThisLevel.length * levelDifference;
       sidePots.push({
         amount: potAmount,
-        eligiblePlayerIds: eligiblePlayers.map(p => p.id)
+        eligiblePlayerIds: eligibleWinners.map(p => p.id)
       });
     }
     
-    previousContributionLevel = contributionLevel;
+    previousLevel = currentLevel;
   }
   
   return sidePots;
@@ -572,9 +633,9 @@ function addToHandHistory(gameState: GameState, winnerIds: string[]): void {
   
   gameState.handHistory.unshift(historyEntry); // Add to beginning for newest first
   
-  // Keep only last 50 hands to prevent memory issues
-  if (gameState.handHistory.length > 50) {
-    gameState.handHistory = gameState.handHistory.slice(0, 50);
+  // Keep only last hands to prevent memory issues
+  if (gameState.handHistory.length > GAME_CONFIG.MAX_HAND_HISTORY) {
+    gameState.handHistory = gameState.handHistory.slice(0, GAME_CONFIG.MAX_HAND_HISTORY);
   }
 }
 

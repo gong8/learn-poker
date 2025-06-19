@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlayerAnalysis, DrawInfo } from '../types';
 import { useSettings } from '../contexts/SettingsContext';
+import { THRESHOLDS, LIMITS } from '../constants';
 
 interface PlayerAnalysisProps {
   analysis: PlayerAnalysis;
@@ -37,18 +38,19 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
   };
 
   const getHandQuality = (strength: number) => {
-    if (strength > 0.75) return 'Excellent';  // Four of a kind+
-    if (strength > 0.55) return 'Good';       // Flush+
-    if (strength > 0.30) return 'Fair';       // Three of a kind+
-    if (strength > 0.08) return 'Poor';       // Pair+
-    return 'Very Poor';                       // High card
+    if (strength > THRESHOLDS.EXCELLENT_HAND) return 'Excellent';  // Four of a kind+
+    if (strength > THRESHOLDS.VERY_GOOD_HAND) return 'Very Good';  // Full house+
+    if (strength > THRESHOLDS.GOOD_HAND) return 'Good';       // Flush+
+    if (strength > THRESHOLDS.FAIR_HAND) return 'Fair';       // Three of a kind+
+    if (strength > THRESHOLDS.WEAK_HAND) return 'Weak';       // Pair+
+    return 'Poor';                            // High card
   };
 
   const getWinChance = (probability: number) => {
-    if (probability > 0.7) return 'Very Likely';
-    if (probability > 0.55) return 'Favored';
-    if (probability > 0.45) return 'Even';
-    if (probability > 0.3) return 'Unlikely';
+    if (probability > THRESHOLDS.VERY_LIKELY_WIN) return 'Very Likely';
+    if (probability > THRESHOLDS.FAVORED_WIN) return 'Favored';
+    if (probability > THRESHOLDS.EVEN_WIN) return 'Even';
+    if (probability > THRESHOLDS.UNLIKELY_WIN) return 'Unlikely';
     return 'Very Unlikely';
   };
 
@@ -80,8 +82,8 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
               <div 
                 className="quality-fill"
                 style={{ 
-                  width: `${analysis.handStrength * 100}%`,
-                  backgroundColor: `hsl(${analysis.handStrength * 120}, 70%, 50%)`
+                  width: `${analysis.handStrength * LIMITS.PERCENTAGE_CONVERSION}%`,
+                  backgroundColor: `hsl(${analysis.handStrength * LIMITS.HSL_COLOR_MULTIPLIER}, 70%, 50%)`
                 }}
               />
             </div>
@@ -89,13 +91,29 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
         )}
       </div>
 
-      {/* Win Chances */}
+      {/* Expected Value */}
       <div className="simple-analysis-card">
         <div className="analysis-header">
-          <span className="analysis-title">Win Chances</span>
-          <span className="analysis-value">{Math.round(analysis.winProbability * 100)}%</span>
+          <span className="analysis-title">Expected Value</span>
+          <span className="analysis-value" style={{ color: analysis.expectedValue >= 0 ? '#16a34a' : '#dc2626' }}>
+            {analysis.expectedValue >= 0 ? '+' : ''}{analysis.expectedValue.toFixed(0)}
+          </span>
         </div>
-        <div className="win-status">{getWinChance(analysis.winProbability)}</div>
+        <div className="win-status">{analysis.expectedValue >= 0 ? 'Profitable' : 'Unprofitable'}</div>
+      </div>
+
+      {/* Pot Odds & Equity */}
+      <div className="simple-analysis-card">
+        <div className="analysis-header">
+          <span className="analysis-title">Pot Odds</span>
+          <span className="analysis-value">
+            {analysis.potOdds === 0 ? 'Free' : `${analysis.potOdds.toFixed(1)}:1`}
+          </span>
+        </div>
+        <div className="analysis-header" style={{ marginTop: '8px' }}>
+          <span className="analysis-title">Equity</span>
+          <span className="analysis-value">{(analysis.equity * LIMITS.PERCENTAGE_CONVERSION).toFixed(1)}%</span>
+        </div>
       </div>
 
       {/* Drawing Opportunities */}
@@ -144,11 +162,11 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
             <div className="stats-grid">
               <div className="stat-item">
                 <span className="stat-label">Hand Strength</span>
-                <span className="stat-value">{(analysis.handStrength * 100).toFixed(1)}%</span>
+                <span className="stat-value">{(analysis.handStrength * LIMITS.PERCENTAGE_CONVERSION).toFixed(1)}%</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Equity</span>
-                <span className="stat-value">{(analysis.equity * 100).toFixed(1)}%</span>
+                <span className="stat-value">{(analysis.equity * LIMITS.PERCENTAGE_CONVERSION).toFixed(1)}%</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Pot Odds</span>
@@ -171,7 +189,7 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
               </div>
               <div className="stat-item">
                 <span className="stat-label">Confidence</span>
-                <span className="stat-value">{(analysis.confidence * 100).toFixed(0)}%</span>
+                <span className="stat-value">{(analysis.confidence * LIMITS.PERCENTAGE_CONVERSION).toFixed(0)}%</span>
               </div>
             </div>
           </div>
@@ -183,13 +201,13 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
                 <div 
                   className="potential-fill"
                   style={{ 
-                    width: `${analysis.potentialStrength * 100}%`,
-                    backgroundColor: `hsl(${analysis.potentialStrength * 120}, 60%, 50%)`
+                    width: `${analysis.potentialStrength * LIMITS.PERCENTAGE_CONVERSION}%`,
+                    backgroundColor: `hsl(${analysis.potentialStrength * LIMITS.HSL_COLOR_MULTIPLIER}, 60%, 50%)`
                   }}
                 />
               </div>
               <span className="potential-label">
-                Up to {(analysis.potentialStrength * 100).toFixed(1)}% with draws
+                Up to {(analysis.potentialStrength * LIMITS.PERCENTAGE_CONVERSION).toFixed(1)}% with draws
               </span>
             </div>
           )}

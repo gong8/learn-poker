@@ -1,0 +1,421 @@
+/* Players Grid Layout */
+.players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Basic Player Styles */
+.player {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.player.current-player {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+:root.dark-mode .player.current-player {
+  border-color: #60a5fa;
+  background: #1e3a8a;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+.player.folded {
+  opacity: 0.4;
+  background: #f1f5f9;
+}
+
+:root.dark-mode .player.folded {
+  background: #1e293b;
+}
+
+.player.winner {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 2px #22c55e;
+}
+
+:root.dark-mode .player.winner {
+  border-color: #4ade80;
+  background: #14532d;
+  box-shadow: 0 0 0 2px #4ade80;
+}
+
+.player.eliminated {
+  border-color: #dc2626;
+  background: #fef2f2;
+  box-shadow: 0 0 0 2px #ef4444;
+  opacity: 0.7;
+}
+
+:root.dark-mode .player.eliminated {
+  border-color: #dc2626;
+  background: #7f1d1d;
+  box-shadow: 0 0 0 2px #ef4444;
+}
+
+/* Player Info */
+.player-info {
+  margin-bottom: 12px;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+:root.dark-mode .player-name {
+  color: var(--text-secondary);
+}
+
+/* Position Indicators */
+.position-indicators {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.dealer-button {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 8px;
+  border: 1px solid;
+  min-width: 18px;
+  text-align: center;
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #22c55e;
+}
+
+:root.dark-mode .dealer-button {
+  background: #15803d;
+  color: #dcfce7;
+  border-color: #22c55e;
+}
+
+.blind-button {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 8px;
+  border: 1px solid;
+  min-width: 18px;
+  text-align: center;
+}
+
+.small-blind {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #3b82f6;
+}
+
+:root.dark-mode .small-blind {
+  background: #1e3a8a;
+  color: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.big-blind {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #ef4444;
+}
+
+:root.dark-mode .big-blind {
+  background: #991b1b;
+  color: #fee2e2;
+  border-color: #dc2626;
+}
+
+/* Status Indicators */
+.all-in-indicator {
+  background: #7c3aed;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 6px;
+  display: inline-block;
+  border: 1px solid #7c3aed;
+}
+
+:root.dark-mode .all-in-indicator {
+  background: #6d28d9;
+  color: #f3e8ff;
+  border-color: #8b5cf6;
+}
+
+.eliminated-indicator {
+  background: #dc2626;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 6px;
+  display: inline-block;
+  border: 1px solid #dc2626;
+}
+
+:root.dark-mode .eliminated-indicator {
+  background: #991b1b;
+  color: #fee2e2;
+  border-color: #dc2626;
+}
+
+/* Player Cards */
+.player-cards {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: auto 0 var(--spacing-sm) 0;
+}
+
+/* Modern Player Component */
+.player-modern {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+  justify-content: space-between;
+}
+
+.player-modern.current-player {
+  border-color: var(--color-call);
+  background: var(--bg-accent);
+  box-shadow: 0 0 0 1px var(--color-call), 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.player-modern.folded {
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+  border-color: var(--border-light);
+}
+
+.player-modern.winner {
+  border-color: var(--color-check);
+  background: #ecfdf5;
+  box-shadow: 0 0 0 1px var(--color-check), 0 4px 12px rgba(5, 150, 105, 0.15);
+}
+
+:root.dark-mode .player-modern.winner {
+  background: #14532d;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 1px #4ade80, 0 4px 12px rgba(74, 222, 128, 0.15);
+}
+
+.player-modern.eliminated {
+  border-color: var(--color-fold);
+  background: #fef2f2;
+  opacity: 0.7;
+  box-shadow: 0 0 0 1px var(--color-fold), 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+:root.dark-mode .player-modern.eliminated {
+  background: #7f1d1d;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626, 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+/* Modern Player Header */
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.player-name-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Modern Position Indicators */
+.position-indicators {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+/* Modern Player Status */
+.player-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  align-items: flex-end;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+}
+
+.status-badge.all-in {
+  background: #faf5ff;
+  color: var(--color-all-in);
+  border-color: var(--color-all-in);
+}
+
+:root.dark-mode .status-badge.all-in {
+  background: #6d28d9;
+  color: #f3e8ff;
+  border-color: #8b5cf6;
+}
+
+.status-badge.folded {
+  background: #fef2f2;
+  color: var(--color-fold);
+  border-color: var(--color-fold);
+}
+
+.status-badge.eliminated {
+  background: #fef2f2;
+  color: var(--color-fold);
+  border-color: var(--color-fold);
+}
+
+:root.dark-mode .status-badge.folded,
+:root.dark-mode .status-badge.eliminated {
+  background: #991b1b;
+  color: #fee2e2;
+  border-color: #dc2626;
+}
+
+.status-badge.winner {
+  background: #ecfdf5;
+  color: var(--color-check);
+  border-color: var(--color-check);
+}
+
+:root.dark-mode .status-badge.winner {
+  background: #15803d;
+}
+
+/* Modern Player Bottom Section */
+.player-bottom {
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+.chip-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.chips-section,
+.bet-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.chip-label,
+.bet-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chips-amount {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  flex: 1;
+  text-align: center;
+}
+
+.bet-amount {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-bet);
+  background: #fef3c7;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bet);
+  flex: 1;
+  text-align: center;
+}
+
+:root.dark-mode .bet-amount {
+  background: #92400e;
+  border-color: #f59e0b;
+  color: #fef3c7;
+}
+
+/* Modern Players Grid */
+.players-grid-modern {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .players {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .player-modern {
+    padding: var(--spacing-md);
+  }
+  
+  .player-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: flex-start;
+  }
+  
+  .player-status {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .player-stats {
+    gap: var(--spacing-md);
+  }
+  
+  .player-cards {
+    gap: var(--spacing-xs);
+  }
+  
+  .players-grid-modern {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+}

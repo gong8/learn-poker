@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GameState, Action, PlayerAnalysis, BotBehavior } from './types';
+import { UI_CONFIG, THRESHOLDS } from './constants';
 import { createInitialGameState, startNewHand, processPlayerAction, getValidActions } from './game-engine';
 import { makeBotDecision } from './bot-ai';
 import { analyzePlayer } from './card-analysis';
@@ -12,6 +13,7 @@ import HandSummaryComponent from './components/HandSummary';
 import SettingsModal from './components/SettingsModal';
 import HandHistory from './components/HandHistory';
 import EliminationModal from './components/EliminationModal';
+import VictoryModal from './components/VictoryModal';
 import { useSettings } from './contexts/SettingsContext';
 
 const PokerGame: React.FC = () => {
@@ -23,6 +25,7 @@ const PokerGame: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showEliminationModal, setShowEliminationModal] = useState(false);
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
 
   const startGame = (botCount: number, botConfigs: BotBehavior[]) => {
     const initialState = createInitialGameState(1, botCount, botConfigs);
@@ -35,11 +38,33 @@ const PokerGame: React.FC = () => {
   const returnToStart = () => {
     setGameState(null);
     setShowEliminationModal(false);
+    setShowVictoryModal(false);
   };
 
   const startNewRound = () => {
     if (gameState) {
+      // Check if only human player remains (victory condition)
+      const remainingPlayers = gameState.players.filter(p => !p.isEliminated);
+      const humanPlayer = remainingPlayers.find(p => !p.isBot);
+      
+      if (remainingPlayers.length === 1 && humanPlayer) {
+        setShowVictoryModal(true);
+        return;
+      }
+      
       const newGameState = startNewHand(gameState);
+      
+      // Check if game should end due to insufficient players
+      if (!newGameState.isGameActive) {
+        const stillRemainingPlayers = newGameState.players.filter(p => !p.isEliminated);
+        const stillHumanPlayer = stillRemainingPlayers.find(p => !p.isBot);
+        
+        if (stillRemainingPlayers.length <= 1 && stillHumanPlayer) {
+          setShowVictoryModal(true);
+        }
+        return;
+      }
+      
       setGameState(newGameState);
       setShowdown(false);
     }
@@ -71,9 +96,9 @@ const PokerGame: React.FC = () => {
       
       const getBotDelay = () => {
         switch (settings.botSpeed) {
-          case 'fast': return 500;
-          case 'slow': return 2000;
-          default: return 1000;
+          case 'fast': return UI_CONFIG.BOT_SPEED.FAST;
+          case 'slow': return UI_CONFIG.BOT_SPEED.SLOW;
+          default: return UI_CONFIG.BOT_SPEED.NORMAL;
         }
       };
 
@@ -153,20 +178,6 @@ const PokerGame: React.FC = () => {
         <div className="header-content">
           <div className="title-section">
             <h1>Learn Poker</h1>
-            <div className="game-info-compact">
-              <div className="info-item phase">
-                <span className="info-label">Phase</span>
-                <span className="info-value">{getPhaseDisplay()}</span>
-              </div>
-              <div className="info-item pot">
-                <span className="info-label">Pot</span>
-                <span className="info-value">{Math.floor(gameState.pot).toLocaleString()}</span>
-              </div>
-              <div className="info-item bet">
-                <span className="info-label">{gameState.currentBet > 0 ? 'To Call' : 'No Bet'}</span>
-                <span className="info-value">{gameState.currentBet > 0 ? Math.floor(gameState.currentBet).toLocaleString() : '—'}</span>
-              </div>
-            </div>
           </div>
           <div className="header-actions">
             {gameState && (
@@ -175,7 +186,7 @@ const PokerGame: React.FC = () => {
                 onClick={() => setShowHandHistory(true)}
                 title="Hand History"
               >
-                📋
+                📋 History
               </button>
             )}
             <button
@@ -183,7 +194,7 @@ const PokerGame: React.FC = () => {
               onClick={() => setShowSettingsModal(true)}
               title="Game Settings"
             >
-              ⚙️
+              ⚙️ Settings
             </button>
           </div>
         </div>
@@ -193,6 +204,70 @@ const PokerGame: React.FC = () => {
         <div className="game-main-modern">
           <div className="poker-table-modern">
             <div className="community-section">
+              <div className="game-info-main">
+                <div className="info-item phase">
+                  <span className="info-label">Phase</span>
+                  <span className="info-value">{getPhaseDisplay()}</span>
+                </div>
+                <div className="info-item pot">
+                  <span className="info-label">Pot</span>
+                  <span className="info-value">{Math.floor(gameState.pot).toLocaleString()}</span>
+                </div>
+                {/* Side Pots Display */}
+                {(() => {
+                  const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isEliminated);
+                  const hasAllInPlayers = activePlayers.some(p => p.isAllIn);
+                  const hasMultipleContributions = new Set(gameState.players.map(p => p.totalContribution)).size > THRESHOLDS.MIN_CONTRIBUTION_LEVELS;
+                  
+                  if (hasAllInPlayers && hasMultipleContributions && activePlayers.length > 1) {
+                    // Calculate side pots for display
+                    const contributionLevels = Array.from(new Set(gameState.players.map(p => p.totalContribution)))
+                      .filter(amount => amount > 0)
+                      .sort((a, b) => a - b);
+                    
+                    const sidePots = [];
+                    let previousLevel = 0;
+                    
+                    for (const currentLevel of contributionLevels) {
+                      const levelDifference = currentLevel - previousLevel;
+                      if (levelDifference <= 0) continue;
+                      
+                      const contributorsAtThisLevel = gameState.players.filter(p => p.totalContribution >= currentLevel);
+                      const eligibleWinners = activePlayers.filter(p => p.totalContribution >= currentLevel);
+                      
+                      if (contributorsAtThisLevel.length > 0 && eligibleWinners.length > 0) {
+                        const potAmount = contributorsAtThisLevel.length * levelDifference;
+                        sidePots.push({
+                          amount: potAmount,
+                          eligibleCount: eligibleWinners.length,
+                          isMainPot: sidePots.length === 0
+                        });
+                      }
+                      
+                      previousLevel = currentLevel;
+                    }
+                    
+                    return (
+                      <div className="side-pots-display">
+                        {sidePots.map((sidePot, index) => (
+                          <div key={index} className="side-pot-item">
+                            <span className="side-pot-label">
+                              {sidePot.isMainPot ? 'Main Pot' : `Side Pot ${index}`}
+                            </span>
+                            <span className="side-pot-value">
+                              {Math.floor(sidePot.amount).toLocaleString()}
+                            </span>
+                            <span className="side-pot-eligible">
+                              ({sidePot.eligibleCount} eligible)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
               <div className="community-cards-grid">
                 {Array.from({ length: 5 }, (_, index) => (
                   <Card
@@ -216,7 +291,13 @@ const PokerGame: React.FC = () => {
                   <Player
                     key={player.id}
                     player={player}
-                    isCurrentPlayer={gameState.isGameActive && index === gameState.currentPlayerIndex}
+                    isCurrentPlayer={
+                      gameState.isGameActive && 
+                      gameState.currentPlayerIndex >= 0 && 
+                      index === gameState.currentPlayerIndex &&
+                      !player.isFolded && 
+                      !player.isEliminated
+                    }
                     isDealer={index === gameState.dealerIndex}
                     isSmallBlind={index === gameState.smallBlindIndex}
                     isBigBlind={index === gameState.bigBlindIndex}
@@ -331,6 +412,11 @@ const PokerGame: React.FC = () => {
 
       <EliminationModal
         isOpen={showEliminationModal}
+        onReturnToStart={returnToStart}
+      />
+
+      <VictoryModal
+        isOpen={showVictoryModal}
         onReturnToStart={returnToStart}
       />
     </div>

@@ -1,0 +1,236 @@
+/* Poker Table and Community Cards */
+.poker-table {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: 0 1px 3px var(--shadow-light);
+  transition: all 0.3s ease;
+}
+
+/* Modern Poker Table */
+.poker-table-modern {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  margin: 0;
+  box-shadow: 0 8px 32px var(--shadow-light);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.poker-table-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.02) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.community-cards {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.community-cards h3 {
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.community-cards .cards {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Modern Community Cards */
+.community-section {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.community-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.community-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.pot-display {
+  background: var(--bg-accent);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-call);
+  color: var(--color-call);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.community-cards-grid {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+/* Card Styles */
+.card {
+  width: 60px;
+  height: 80px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  position: relative;
+  box-shadow: 0 2px 4px var(--shadow-light), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+/* Modern Card Styles */
+.card-modern {
+  width: 72px;
+  height: 96px;
+  background: var(--bg-secondary);
+  border: 3px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  position: relative;
+  box-shadow: 0 4px 12px var(--shadow-light), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: var(--transition-normal);
+  cursor: default;
+}
+
+.card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+:root.dark-mode .card {
+  background: #1a1a1a;
+  border-color: #525252;
+  box-shadow: 0 2px 4px var(--shadow-light), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+:root.dark-mode .card-modern {
+  background: #1a1a1a;
+  border-color: #525252;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card.red, .card-modern.red {
+  color: #dc2626;
+}
+
+.card.black, .card-modern.black {
+  color: #374151;
+}
+
+:root.dark-mode .card.black,
+:root.dark-mode .card-modern.black {
+  color: #e5e7eb;
+}
+
+.card-back {
+  background: #6b7280;
+  color: transparent;
+  border-color: #374151;
+  box-shadow: 0 2px 4px var(--shadow-light), 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+:root.dark-mode .card-back {
+  background: #4b5563;
+  border-color: #6b7280;
+  box-shadow: 0 2px 4px var(--shadow-light), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.card-back .card-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.2) 0px,
+    rgba(255, 255, 255, 0.2) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  border-radius: 4px;
+}
+
+.card-rank {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.card-suit {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* Responsive Card Styles */
+@media (max-width: 768px) {
+  .poker-table {
+    padding: 20px;
+    margin: 16px 0;
+  }
+  
+  .poker-table-modern {
+    padding: var(--spacing-lg);
+  }
+  
+  .community-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: center;
+  }
+  
+  .community-cards-grid {
+    gap: var(--spacing-sm);
+  }
+
+  .community-cards .cards {
+    gap: 6px;
+  }
+
+  .card {
+    width: 50px;
+    height: 70px;
+    font-size: 0.75rem;
+  }
+  
+  .card-modern {
+    width: 60px;
+    height: 80px;
+    font-size: 0.85rem;
+  }
+}

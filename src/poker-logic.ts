@@ -1,4 +1,5 @@
 import { Card, Suit, Rank } from './types';
+import { HAND_EVALUATION, CARD_VALUES } from './constants';
 
 const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -24,8 +25,10 @@ export function shuffleDeck(deck: Card[]): Card[] {
 
 function getRankValue(rank: Rank): number {
   const rankValues: Record<Rank, number> = {
-    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-    'J': 11, 'Q': 12, 'K': 13, 'A': 14
+    '2': CARD_VALUES.RANKS.TWO, '3': CARD_VALUES.RANKS.THREE, '4': CARD_VALUES.RANKS.FOUR, 
+    '5': CARD_VALUES.RANKS.FIVE, '6': CARD_VALUES.RANKS.SIX, '7': CARD_VALUES.RANKS.SEVEN, 
+    '8': CARD_VALUES.RANKS.EIGHT, '9': CARD_VALUES.RANKS.NINE, '10': CARD_VALUES.RANKS.TEN,
+    'J': CARD_VALUES.RANKS.JACK, 'Q': CARD_VALUES.RANKS.QUEEN, 'K': CARD_VALUES.RANKS.KING, 'A': CARD_VALUES.RANKS.ACE
   };
   return rankValues[rank];
 }
@@ -93,7 +96,7 @@ function evaluatePartialHand(cards: Card[]): HandEvaluation {
     const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
     return { 
       rank: 'pair', 
-      score: 100 + getRankValue(pairRank), 
+      score: HAND_EVALUATION.PAIR_BASE_SCORE + getRankValue(pairRank), 
       cards: sortCardsSystematically(cards, 'pair') 
     };
   }
@@ -248,50 +251,78 @@ function evaluateFiveCards(cards: Card[]): HandEvaluation {
   const isRoyalStraight = ranks.join('') === 'AKQJ10';
   
   if (isFlush && isRoyalStraight) {
-    return { rank: 'royal-flush', score: 900, cards: sortCardsSystematically(cards, 'royal-flush') };
+    return { rank: 'royal-flush', score: HAND_EVALUATION.ROYAL_FLUSH_SCORE, cards: sortCardsSystematically(cards, 'royal-flush') };
   }
   
   if (isFlush && isStraight) {
-    return { rank: 'straight-flush', score: 800 + straightHighCard, cards: sortCardsSystematically(cards, 'straight-flush') };
+    return { rank: 'straight-flush', score: HAND_EVALUATION.STRAIGHT_FLUSH_SCORE + straightHighCard, cards: sortCardsSystematically(cards, 'straight-flush') };
   }
   
   const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
   
   if (counts[0] === 4) {
     const fourOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 4)![0];
-    return { rank: 'four-of-a-kind', score: 700 + getRankValue(fourOfAKindRank), cards: sortCardsSystematically(cards, 'four-of-a-kind') };
+    const kicker = Array.from(rankCounts.entries()).find(([, count]) => count === 1)?.[0];
+    const quadsScore = getRankValue(fourOfAKindRank) * HAND_EVALUATION.BASE_MULTIPLIER + (kicker ? getRankValue(kicker) : 0);
+    return { rank: 'four-of-a-kind', score: HAND_EVALUATION.FOUR_OF_A_KIND_SCORE + quadsScore, cards: sortCardsSystematically(cards, 'four-of-a-kind') };
   }
   
   if (counts[0] === 3 && counts[1] === 2) {
     const threeOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 3)![0];
-    return { rank: 'full-house', score: 600 + getRankValue(threeOfAKindRank), cards: sortCardsSystematically(cards, 'full-house') };
+    const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
+    const fullHouseScore = getRankValue(threeOfAKindRank) * HAND_EVALUATION.BASE_MULTIPLIER + getRankValue(pairRank);
+    return { rank: 'full-house', score: HAND_EVALUATION.FULL_HOUSE_SCORE + fullHouseScore, cards: sortCardsSystematically(cards, 'full-house') };
   }
   
   if (isFlush) {
-    return { rank: 'flush', score: 500 + getRankValue(ranks[0]), cards: sortCardsSystematically(cards, 'flush') };
+    // For flush comparison, use all card values weighted by position
+    const flushScore = ranks.reduce((score, rank, index) => {
+      return score + getRankValue(rank) * Math.pow(HAND_EVALUATION.BASE_MULTIPLIER, 4-index);
+    }, 0);
+    return { rank: 'flush', score: HAND_EVALUATION.FLUSH_SCORE + flushScore, cards: sortCardsSystematically(cards, 'flush') };
   }
   
   if (isStraight) {
-    return { rank: 'straight', score: 400 + straightHighCard, cards: sortCardsSystematically(cards, 'straight') };
+    return { rank: 'straight', score: HAND_EVALUATION.STRAIGHT_SCORE + straightHighCard, cards: sortCardsSystematically(cards, 'straight') };
   }
   
   if (counts[0] === 3) {
     const threeOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 3)![0];
-    return { rank: 'three-of-a-kind', score: 300 + getRankValue(threeOfAKindRank), cards: sortCardsSystematically(cards, 'three-of-a-kind') };
+    const kickers = Array.from(rankCounts.entries()).filter(([, count]) => count === 1)
+      .map(([rank]) => rank).sort((a, b) => getRankValue(b) - getRankValue(a));
+    // Score: trips * 15^2 + kicker1 * 15 + kicker2
+    const tripsScore = getRankValue(threeOfAKindRank) * HAND_EVALUATION.BASE_MULTIPLIER_SQUARED + 
+      (kickers[0] ? getRankValue(kickers[0]) * HAND_EVALUATION.BASE_MULTIPLIER : 0) +
+      (kickers[1] ? getRankValue(kickers[1]) : 0);
+    return { rank: 'three-of-a-kind', score: HAND_EVALUATION.THREE_OF_A_KIND_SCORE + tripsScore, cards: sortCardsSystematically(cards, 'three-of-a-kind') };
   }
   
   if (counts[0] === 2 && counts[1] === 2) {
     const pairs = Array.from(rankCounts.entries()).filter(([, count]) => count === 2).map(([rank]) => rank);
-    const highPair = pairs.reduce((a, b) => getRankValue(a) > getRankValue(b) ? a : b);
-    return { rank: 'two-pair', score: 200 + getRankValue(highPair), cards: sortCardsSystematically(cards, 'two-pair') };
+    const sortedPairs = pairs.sort((a, b) => getRankValue(b) - getRankValue(a));
+    const kicker = Array.from(rankCounts.entries()).filter(([, count]) => count === 1).map(([rank]) => rank)[0];
+    // Score: high pair * 15^2 + low pair * 15 + kicker
+    const twoPairScore = getRankValue(sortedPairs[0]) * HAND_EVALUATION.BASE_MULTIPLIER_SQUARED + getRankValue(sortedPairs[1]) * HAND_EVALUATION.BASE_MULTIPLIER + (kicker ? getRankValue(kicker) : 0);
+    return { rank: 'two-pair', score: HAND_EVALUATION.TWO_PAIR_SCORE + twoPairScore, cards: sortCardsSystematically(cards, 'two-pair') };
   }
   
   if (counts[0] === 2) {
     const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
-    return { rank: 'pair', score: 100 + getRankValue(pairRank), cards: sortCardsSystematically(cards, 'pair') };
+    const kickers = Array.from(rankCounts.entries()).filter(([, count]) => count === 1)
+      .map(([rank]) => rank).sort((a, b) => getRankValue(b) - getRankValue(a));
+    // Score: pair * 15^3 + kicker1 * 15^2 + kicker2 * 15 + kicker3
+    const pairScore = getRankValue(pairRank) * HAND_EVALUATION.BASE_MULTIPLIER_CUBED + 
+      (kickers[0] ? getRankValue(kickers[0]) * HAND_EVALUATION.BASE_MULTIPLIER_SQUARED : 0) +
+      (kickers[1] ? getRankValue(kickers[1]) * HAND_EVALUATION.BASE_MULTIPLIER : 0) +
+      (kickers[2] ? getRankValue(kickers[2]) : 0);
+    return { rank: 'pair', score: HAND_EVALUATION.PAIR_SCORE + pairScore, cards: sortCardsSystematically(cards, 'pair') };
   }
   
-  return { rank: 'high-card', score: getRankValue(ranks[0]), cards: sortCardsSystematically(cards, 'high-card') };
+  // High card comparison uses all cards weighted by position (but keep it below pair level)
+  const highCardScore = ranks.reduce((score, rank, index) => {
+    return score + getRankValue(rank) * Math.pow(HAND_EVALUATION.BASE_MULTIPLIER, 4-index);
+  }, 0);
+  return { rank: 'high-card', score: Math.min(HAND_EVALUATION.MAX_HIGH_CARD_SCORE, highCardScore), cards: sortCardsSystematically(cards, 'high-card') };
 }
 
 function checkStraight(ranks: Rank[]): { isStraight: boolean; highCard: number } {
@@ -312,7 +343,7 @@ function checkStraight(ranks: Rank[]): { isStraight: boolean; highCard: number }
   
   // Check for A-2-3-4-5 (wheel) straight
   if (values.join(',') === '2,3,4,5,14') {
-    return { isStraight: true, highCard: 5 }; // 5 is high card in wheel
+    return { isStraight: true, highCard: HAND_EVALUATION.WHEEL_STRAIGHT_HIGH_CARD }; // 5 is high card in wheel
   }
   
   return { isStraight: false, highCard: 0 };

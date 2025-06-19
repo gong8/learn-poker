@@ -1,0 +1,853 @@
+/* ==========================================
+   BUTTONS AND CONTROLS CSS STYLES
+   ========================================== */
+
+/* Game Controls */
+.game-controls {
+  background: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 8px;
+  margin: 24px 0;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px var(--shadow-light);
+  transition: all 0.3s ease;
+}
+
+/* Action Buttons Container */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* Base Action Button */
+.action-button {
+  padding: 10px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 90px;
+  background: white;
+  color: #374151;
+}
+
+:root.dark-mode .action-button {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.action-button:hover:not(:disabled) {
+  border-color: #9ca3af;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Primary Action Button */
+.action-button.primary {
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.action-button.primary:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+}
+
+/* Fold Button */
+.action-button.fold {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+:root.dark-mode .action-button.fold {
+  background: #7f1d1d;
+  border-color: #dc2626;
+  color: #fca5a5;
+}
+
+.action-button.fold:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+:root.dark-mode .action-button.fold:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #ef4444;
+}
+
+/* Check Button */
+.action-button.check {
+  background: #f0f9ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+:root.dark-mode .action-button.check {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.action-button.check:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+:root.dark-mode .action-button.check:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+}
+
+/* Call Button */
+.action-button.call {
+  background: #f0f9ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+:root.dark-mode .action-button.call {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.action-button.call:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+:root.dark-mode .action-button.call:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+}
+
+/* Bet and Raise Buttons */
+.action-button.bet, .action-button.raise {
+  background: #fef3c7;
+  border-color: #fbbf24;
+  color: #d97706;
+}
+
+:root.dark-mode .action-button.bet, :root.dark-mode .action-button.raise {
+  background: #92400e;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.action-button.bet:hover:not(:disabled), .action-button.raise:hover:not(:disabled) {
+  background: #fde68a;
+  border-color: #f59e0b;
+}
+
+:root.dark-mode .action-button.bet:hover:not(:disabled), :root.dark-mode .action-button.raise:hover:not(:disabled) {
+  background: #a16207;
+  border-color: #fbbf24;
+}
+
+/* All-In Button */
+.action-button.all-in {
+  background: #f3e8ff;
+  border-color: #c084fc;
+  color: #7c3aed;
+}
+
+:root.dark-mode .action-button.all-in {
+  background: #581c87;
+  border-color: #8b5cf6;
+  color: #c4b5fd;
+}
+
+.action-button.all-in:hover:not(:disabled) {
+  background: #e9d5ff;
+  border-color: #a855f7;
+}
+
+:root.dark-mode .action-button.all-in:hover:not(:disabled) {
+  background: #6b21a8;
+  border-color: #a855f7;
+}
+
+/* Bet Controls */
+.bet-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.bet-controls label {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+:root.dark-mode .bet-controls label {
+  color: var(--text-muted);
+}
+
+.bet-controls input[type="number"] {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: 100px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+:root.dark-mode .bet-controls input[type="number"] {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.bet-controls input[type="number"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* Bet Slider */
+.bet-slider {
+  width: 200px;
+  accent-color: #3b82f6;
+}
+
+/* Start Game Button */
+.start-game-button {
+  padding: 12px 32px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.start-game-button:hover {
+  background: #2563eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* New Hand Button */
+.new-hand-button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #3b82f6;
+  color: white;
+}
+
+.new-hand-button:hover {
+  background: #2563eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.new-hand-button.primary {
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.new-hand-button.primary:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+}
+
+.new-hand-btn {
+  padding: 12px 24px;
+  background: var(--color-check);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.new-hand-btn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+/* Modal Buttons */
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* Settings Buttons */
+.reset-button {
+  padding: 10px 20px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-button:hover {
+  background: var(--border-light);
+}
+
+.save-button {
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-button:hover {
+  background: #2563eb;
+}
+
+.settings-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+
+/* History Button */
+.history-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.history-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+
+/* Checkbox Control */
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s ease;
+  background: var(--bg-secondary);
+}
+
+.setting-item input[type="checkbox"]:checked + .checkmark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.setting-item input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* Modern Game Controls */
+.game-controls-modern {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-md) 0;
+  box-shadow: 0 4px 12px var(--shadow-light);
+  transition: var(--transition-normal);
+}
+
+.controls-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.primary-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-header h4 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.preset-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preset-amount {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.custom-bet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.bet-range {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Modern Action Buttons */
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.action-btn:hover::before {
+  opacity: 1;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.action-btn:disabled::before {
+  display: none;
+}
+
+/* Modern Action Button Variants */
+.action-btn-fold {
+  background: var(--color-fold);
+  color: white;
+  border-color: var(--color-fold);
+}
+
+.action-btn-fold:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.action-btn-call {
+  background: var(--color-call);
+  color: white;
+  border-color: var(--color-call);
+}
+
+.action-btn-call:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.action-btn-check {
+  background: var(--color-check);
+  color: white;
+  border-color: var(--color-check);
+}
+
+.action-btn-check:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.action-btn-bet,
+.action-btn-raise {
+  background: var(--color-bet);
+  color: white;
+  border-color: var(--color-bet);
+}
+
+.action-btn-bet:hover:not(:disabled),
+.action-btn-raise:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.action-btn-all-in {
+  background: var(--color-all-in);
+  color: white;
+  border-color: var(--color-all-in);
+}
+
+.action-btn-all-in:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* Dark Mode Modern Action Buttons */
+:root.dark-mode .action-btn-fold {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+:root.dark-mode .action-btn-call {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+:root.dark-mode .action-btn-check {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+:root.dark-mode .action-btn-bet,
+:root.dark-mode .action-btn-raise {
+  background: #92400e;
+  color: #fbbf24;
+}
+
+:root.dark-mode .action-btn-all-in {
+  background: #581c87;
+  color: #c4b5fd;
+}
+
+/* Betting Section */
+.betting-section {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--border-light);
+}
+
+/* Toggle Button */
+.toggle-btn {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.toggle-btn:hover {
+  background: var(--bg-accent);
+  border-color: var(--color-call);
+}
+
+.toggle-btn.active {
+  background: var(--color-call);
+  color: white;
+  border-color: var(--color-call);
+}
+
+/* Preset Bet Buttons */
+.preset-bet-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.preset-bet-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(245, 158, 11, 0.1) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.preset-bet-btn:hover::before {
+  opacity: 1;
+}
+
+.preset-bet-btn:hover {
+  border-color: var(--color-bet);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.preset-bets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+}
+
+/* Bet Input */
+.bet-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  text-align: center;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+
+.bet-input:focus {
+  outline: none;
+  border-color: var(--color-bet);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.bet-input-group {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  margin: var(--spacing-md) 0;
+}
+
+/* Modern Bet Slider */
+.bet-slider {
+  width: 100%;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.bet-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--color-bet);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-fast);
+}
+
+.bet-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.bet-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--color-bet);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-fast);
+}
+
+/* Control Messages and Tips */
+.big-blind-message {
+  background: #fff7ed;
+  color: #ea580c;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  border: 1px solid #fed7aa;
+  text-align: center;
+}
+
+:root.dark-mode .big-blind-message {
+  background: #7c2d12;
+  color: #fed7aa;
+  border-color: #c2410c;
+}
+
+.tip-message {
+  background: #f0f9ff;
+  color: #0369a1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  border: 1px solid #bae6fd;
+  text-align: center;
+}
+
+:root.dark-mode .tip-message {
+  background: #0c4a6e;
+  color: #bae6fd;
+  border-color: #0284c7;
+}
+
+/* RESPONSIVE STYLES */
+@media (max-width: 768px) {
+  .action-buttons {
+    gap: 8px;
+  }
+  
+  .action-button {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    min-width: 75px;
+  }
+  
+  .bet-controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bet-slider {
+    width: 150px;
+  }
+
+  .game-controls-modern {
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+  }
+  
+  .action-btn {
+    padding: 10px 16px;
+    min-width: 80px;
+    font-size: var(--font-size-sm);
+  }
+  
+  .preset-bets {
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  }
+  
+  .bet-input-group {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .bet-input {
+    width: 100%;
+  }
+}

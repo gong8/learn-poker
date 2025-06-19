@@ -21,7 +21,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   isPreflop = false
 }) => {
   const minBetAmount = currentBet + minRaise;
-  const maxBetAmount = currentBet + playerChips;
+  const maxBetAmount = playerChips;
   const [betAmount, setBetAmount] = useState(minBetAmount);
   const [customBet, setCustomBet] = useState(false);
 

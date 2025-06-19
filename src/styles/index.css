@@ -1,0 +1,12 @@
+/* ==========================================
+   MAIN STYLES INDEX - IMPORTS ALL MODULES
+   ========================================== */
+
+/* Import all modular CSS files in order of dependencies */
+@import './variables.css';
+@import './base.css';
+@import './header.css';
+@import './table.css';
+@import './players.css';
+@import './buttons.css';
+@import './modals.css';
