@@ -2,9 +2,12 @@ import { GameState, Player, Card, Action, GamePhase, ChipChange, HandSummary, Ha
 import { createDeck, evaluateHand, getHandTypeDisplayName } from './poker-logic';
 import { createDeckTracker, updateDeckTracker } from './card-analysis';
 import { getBotProfile } from './bot-profiles';
+import { getRandomBotName, resetBotNames } from './bot-names';
 
 export function createInitialGameState(playerCount: number, botCount: number, botConfigs?: BotBehavior[]): GameState {
   const players: Player[] = [];
+  
+  resetBotNames();
   
   players.push({
     id: 'human',
@@ -24,7 +27,7 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
     const botBehavior = botConfigs?.[i] || 'balanced';
     players.push({
       id: `bot-${i}`,
-      name: `Bot ${i + 1}`,
+      name: getRandomBotName(),
       chips: 100,
       cards: [],
       isBot: true,

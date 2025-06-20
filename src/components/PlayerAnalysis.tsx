@@ -89,13 +89,39 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
         )}
       </div>
 
-      {/* Win Chances */}
+      {/* Expected Value */}
       <div className="simple-analysis-card">
         <div className="analysis-header">
-          <span className="analysis-title">Win Chances</span>
-          <span className="analysis-value">{Math.round(analysis.winProbability * 100)}%</span>
+          <span className="analysis-title">Expected Value</span>
+          <span 
+            className="analysis-value"
+            style={{ color: analysis.expectedValue > 0 ? '#16a34a' : analysis.expectedValue < 0 ? '#dc2626' : '#6b7280' }}
+          >
+            {analysis.expectedValue > 0 ? '+' : ''}{analysis.expectedValue.toFixed(0)}
+          </span>
         </div>
-        <div className="win-status">{getWinChance(analysis.winProbability)}</div>
+        <div className="win-status">
+          {analysis.expectedValue > 0 ? 'Profitable' : analysis.expectedValue < 0 ? 'Losing' : 'Neutral'}
+        </div>
+      </div>
+
+      {/* Pot Odds & Equity */}
+      <div className="simple-analysis-card">
+        <div className="analysis-header">
+          <span className="analysis-title">Pot Odds & Equity</span>
+        </div>
+        <div className="odds-equity-row">
+          <div className="odds-equity-item">
+            <span className="odds-label">Pot Odds</span>
+            <span className="odds-value">
+              {analysis.potOdds === 0 ? 'Free' : `${analysis.potOdds.toFixed(1)}:1`}
+            </span>
+          </div>
+          <div className="odds-equity-item">
+            <span className="odds-label">Equity</span>
+            <span className="odds-value">{(analysis.equity * 100).toFixed(1)}%</span>
+          </div>
+        </div>
       </div>
 
       {/* Drawing Opportunities */}
@@ -145,25 +171,6 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
               <div className="stat-item">
                 <span className="stat-label">Hand Strength</span>
                 <span className="stat-value">{(analysis.handStrength * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Equity</span>
-                <span className="stat-value">{(analysis.equity * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Pot Odds</span>
-                <span className="stat-value">
-                  {analysis.potOdds === 0 ? 'Free' : `${analysis.potOdds.toFixed(1)}:1`}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Expected Value</span>
-                <span 
-                  className="stat-value"
-                  style={{ color: analysis.expectedValue >= 0 ? '#16a34a' : '#dc2626' }}
-                >
-                  {analysis.expectedValue >= 0 ? '+' : ''}{analysis.expectedValue.toFixed(0)}
-                </span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Total Outs</span>

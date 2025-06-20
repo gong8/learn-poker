@@ -154,18 +154,6 @@ const PokerGame: React.FC = () => {
           <div className="title-section">
             <h1>Learn Poker</h1>
             <div className="game-info-compact">
-              <div className="info-item phase">
-                <span className="info-label">Phase</span>
-                <span className="info-value">{getPhaseDisplay()}</span>
-              </div>
-              <div className="info-item pot">
-                <span className="info-label">Pot</span>
-                <span className="info-value">{Math.floor(gameState.pot).toLocaleString()}</span>
-              </div>
-              <div className="info-item bet">
-                <span className="info-label">{gameState.currentBet > 0 ? 'To Call' : 'No Bet'}</span>
-                <span className="info-value">{gameState.currentBet > 0 ? Math.floor(gameState.currentBet).toLocaleString() : '—'}</span>
-              </div>
             </div>
           </div>
           <div className="header-actions">
@@ -175,7 +163,7 @@ const PokerGame: React.FC = () => {
                 onClick={() => setShowHandHistory(true)}
                 title="Hand History"
               >
-                📋
+                📋 History
               </button>
             )}
             <button
@@ -183,7 +171,7 @@ const PokerGame: React.FC = () => {
               onClick={() => setShowSettingsModal(true)}
               title="Game Settings"
             >
-              ⚙️
+              ⚙️ Settings
             </button>
           </div>
         </div>
@@ -193,6 +181,16 @@ const PokerGame: React.FC = () => {
         <div className="game-main-modern">
           <div className="poker-table-modern">
             <div className="community-section">
+              <div className="game-status-info">
+                <div className="status-item phase">
+                  <span className="status-label">Phase</span>
+                  <span className="status-value">{getPhaseDisplay()}</span>
+                </div>
+                <div className="status-item pot">
+                  <span className="status-label">Pot</span>
+                  <span className="status-value">{Math.floor(gameState.pot).toLocaleString()}</span>
+                </div>
+              </div>
               <div className="community-cards-grid">
                 {Array.from({ length: 5 }, (_, index) => (
                   <Card

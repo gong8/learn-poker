@@ -57,12 +57,18 @@ const Player: React.FC<PlayerProps> = ({
       
       <div className="player-bottom">
         <div className="chip-info">
-          <div className="chips-amount">
-            {Math.floor(player.chips).toLocaleString()}
+          <div className="chips-section">
+            <div className="chip-label">Chips</div>
+            <div className="chips-amount">
+              {Math.floor(player.chips).toLocaleString()}
+            </div>
           </div>
           {player.totalContribution > 0 && (
-            <div className="bet-amount">
-              {Math.floor(player.totalContribution).toLocaleString()}
+            <div className="bet-section">
+              <div className="bet-label">Bet</div>
+              <div className="bet-amount">
+                {Math.floor(player.totalContribution).toLocaleString()}
+              </div>
             </div>
           )}
         </div>
