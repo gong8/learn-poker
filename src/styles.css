@@ -3197,6 +3197,17 @@ body {
   text-align: center;
 }
 
+.bet-amount-box {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  text-align: center;
+}
+
 .bet-amount {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -3301,6 +3312,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 60px;
 }
 
 .title-section {
@@ -3309,6 +3321,7 @@ body {
   gap: var(--spacing-md);
   justify-content: center;
   align-items: center;
+  flex: 1;
 }
 
 .title-section h1 {
@@ -3359,6 +3372,7 @@ body {
 .header-actions {
   display: flex;
   gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .header-btn {
@@ -3619,6 +3633,11 @@ body {
 .chip-change.negative {
   color: var(--color-fold);
   font-weight: 700;
+}
+
+.chip-change.neutral {
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .total-chips {

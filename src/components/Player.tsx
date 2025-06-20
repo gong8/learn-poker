@@ -66,7 +66,7 @@ const Player: React.FC<PlayerProps> = ({
           {player.totalContribution > 0 && (
             <div className="bet-section">
               <div className="bet-label">Bet</div>
-              <div className="bet-amount">
+              <div className="bet-amount-box">
                 {Math.floor(player.totalContribution).toLocaleString()}
               </div>
             </div>

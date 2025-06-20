@@ -37,10 +37,11 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
   };
 
   const getHandQuality = (strength: number) => {
-    if (strength > 0.75) return 'Excellent';  // Four of a kind+
-    if (strength > 0.55) return 'Good';       // Flush+
-    if (strength > 0.30) return 'Fair';       // Three of a kind+
-    if (strength > 0.08) return 'Poor';       // Pair+
+    if (strength > 0.75) return 'Excellent';  // Full house+
+    if (strength > 0.55) return 'Very Good';  // Straight+
+    if (strength > 0.45) return 'Good';       // Three of a kind+
+    if (strength > 0.25) return 'Fair';       // Two pair+
+    if (strength > 0.12) return 'Poor';       // Pair+
     return 'Very Poor';                       // High card
   };
 

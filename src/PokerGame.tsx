@@ -257,8 +257,8 @@ const PokerGame: React.FC = () => {
                             <tr key={change.playerId}>
                               <td className="player-name">{change.playerName}</td>
                               <td className="bet-amount">{Math.floor(change.totalBet).toLocaleString()}</td>
-                              <td className={`chip-change ${change.change >= 0 ? 'positive' : 'negative'}`}>
-                                {change.change >= 0 ? '+' : ''}{Math.floor(change.change).toLocaleString()}
+                              <td className={`chip-change ${change.change > 0 ? 'positive' : change.change < 0 ? 'negative' : 'neutral'}`}>
+                                {change.change > 0 ? '+' : ''}{Math.floor(change.change).toLocaleString()}
                               </td>
                               <td className="total-chips">{Math.floor(change.finalChips).toLocaleString()}</td>
                             </tr>
