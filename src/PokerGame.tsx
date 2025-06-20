@@ -270,6 +270,7 @@ const PokerGame: React.FC = () => {
               currentBet={Math.floor(Math.max(0, gameState.currentBet - humanPlayer.currentBet))}
               playerChips={humanPlayer.chips}
               minRaise={gameState.bigBlind}
+              potSize={gameState.pot}
               isBigBlind={gameState.players.indexOf(humanPlayer) === gameState.bigBlindIndex}
               isPreflop={gameState.phase === 'preflop'}
             />

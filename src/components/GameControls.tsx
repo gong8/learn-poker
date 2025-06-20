@@ -7,6 +7,7 @@ interface GameControlsProps {
   currentBet: number;
   playerChips: number;
   minRaise: number;
+  potSize: number;
   isBigBlind?: boolean;
   isPreflop?: boolean;
 }
@@ -17,6 +18,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   currentBet,
   playerChips,
   minRaise,
+  potSize,
   isBigBlind = false,
   isPreflop = false
 }) => {
@@ -38,12 +40,11 @@ const GameControls: React.FC<GameControlsProps> = ({
   };
 
   const getPresetAmounts = () => {
-    const pot = currentBet > 0 ? currentBet * 2 : 15; // Estimate pot size (SB 5 + BB 10)
     const presets = [
       { label: 'Min', amount: minBetAmount },
-      { label: '1/2 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(pot * 0.5)), maxBetAmount) },
-      { label: '3/4 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(pot * 0.75)), maxBetAmount) },
-      { label: 'Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + pot), maxBetAmount) },
+      { label: '1/2 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(potSize * 0.5)), maxBetAmount) },
+      { label: '3/4 Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + Math.floor(potSize * 0.75)), maxBetAmount) },
+      { label: 'Pot', amount: Math.min(roundToBigBlindMultiple(currentBet + potSize), maxBetAmount) },
       { label: 'All In', amount: playerChips, displayAmount: playerChips }
     ];
     return presets.filter(preset => preset.amount >= minBetAmount && preset.amount <= maxBetAmount);

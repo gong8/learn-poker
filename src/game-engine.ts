@@ -441,13 +441,6 @@ function determineWinner(gameState: GameState): void {
     gameState.isGameActive = false;
     gameState.currentPlayerIndex = -1; // Clear turn highlight
     
-    // Ensure all-in players who didn't win end up with 0 chips
-    gameState.players.forEach(player => {
-      if (player.isAllIn && player.id !== activePlayers[0].id && !player.isFolded) {
-        player.chips = 0;
-      }
-    });
-    
     calculateChipChanges(gameState, startingChips);
     // Ensure unique winner ID to prevent duplicate trophies
     const uniqueWinnerIds = Array.from(new Set([activePlayers[0].id]));
@@ -491,12 +484,8 @@ function determineWinner(gameState: GameState): void {
   gameState.isGameActive = false;
   gameState.currentPlayerIndex = -1; // Clear turn highlight
   
-  // Ensure all-in players who didn't win anything end up with 0 chips
-  gameState.players.forEach(player => {
-    if (player.isAllIn && !allWinnerIds.includes(player.id) && !player.isFolded) {
-      player.chips = 0;
-    }
-  });
+  // All-in players who didn't win any side pots should have 0 chips
+  // (they already contributed everything they had)
   
   calculateChipChanges(gameState, startingChips);
   // Ensure unique winner IDs to prevent duplicate trophies
@@ -571,6 +560,7 @@ function calculateHandSummaries(gameState: GameState, winnerIds: string[]): void
         handRank: hand.rank,
         handDescription: getHandTypeDisplayName(hand.rank),
         cards: hand.cards,
+        holeCards: player.cards,
         isWinner: winnerIds.includes(player.id)
       };
     })

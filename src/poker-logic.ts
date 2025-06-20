@@ -248,50 +248,94 @@ function evaluateFiveCards(cards: Card[]): HandEvaluation {
   const isRoyalStraight = ranks.join('') === 'AKQJ10';
   
   if (isFlush && isRoyalStraight) {
-    return { rank: 'royal-flush', score: 900, cards: sortCardsSystematically(cards, 'royal-flush') };
+    return { rank: 'royal-flush', score: 9000000, cards: sortCardsSystematically(cards, 'royal-flush') };
   }
   
   if (isFlush && isStraight) {
-    return { rank: 'straight-flush', score: 800 + straightHighCard, cards: sortCardsSystematically(cards, 'straight-flush') };
+    return { rank: 'straight-flush', score: 8000000 + straightHighCard, cards: sortCardsSystematically(cards, 'straight-flush') };
   }
   
   const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
   
   if (counts[0] === 4) {
     const fourOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 4)![0];
-    return { rank: 'four-of-a-kind', score: 700 + getRankValue(fourOfAKindRank), cards: sortCardsSystematically(cards, 'four-of-a-kind') };
+    const kicker = Array.from(rankCounts.entries()).find(([, count]) => count === 1)![0];
+    return { 
+      rank: 'four-of-a-kind', 
+      score: 7000000 + getRankValue(fourOfAKindRank) * 100 + getRankValue(kicker), 
+      cards: sortCardsSystematically(cards, 'four-of-a-kind') 
+    };
   }
   
   if (counts[0] === 3 && counts[1] === 2) {
     const threeOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 3)![0];
-    return { rank: 'full-house', score: 600 + getRankValue(threeOfAKindRank), cards: sortCardsSystematically(cards, 'full-house') };
+    const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
+    return { 
+      rank: 'full-house', 
+      score: 6000000 + getRankValue(threeOfAKindRank) * 100 + getRankValue(pairRank), 
+      cards: sortCardsSystematically(cards, 'full-house') 
+    };
   }
   
   if (isFlush) {
-    return { rank: 'flush', score: 500 + getRankValue(ranks[0]), cards: sortCardsSystematically(cards, 'flush') };
+    const rankValues = ranks.map(getRankValue).sort((a, b) => b - a);
+    return { 
+      rank: 'flush', 
+      score: 5000000 + rankValues[0] * 10000 + rankValues[1] * 1000 + rankValues[2] * 100 + rankValues[3] * 10 + rankValues[4], 
+      cards: sortCardsSystematically(cards, 'flush') 
+    };
   }
   
   if (isStraight) {
-    return { rank: 'straight', score: 400 + straightHighCard, cards: sortCardsSystematically(cards, 'straight') };
+    return { rank: 'straight', score: 4000000 + straightHighCard, cards: sortCardsSystematically(cards, 'straight') };
   }
   
   if (counts[0] === 3) {
     const threeOfAKindRank = Array.from(rankCounts.entries()).find(([, count]) => count === 3)![0];
-    return { rank: 'three-of-a-kind', score: 300 + getRankValue(threeOfAKindRank), cards: sortCardsSystematically(cards, 'three-of-a-kind') };
+    const kickers = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 1)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    return { 
+      rank: 'three-of-a-kind', 
+      score: 3000000 + getRankValue(threeOfAKindRank) * 10000 + kickers[0] * 100 + kickers[1], 
+      cards: sortCardsSystematically(cards, 'three-of-a-kind') 
+    };
   }
   
   if (counts[0] === 2 && counts[1] === 2) {
-    const pairs = Array.from(rankCounts.entries()).filter(([, count]) => count === 2).map(([rank]) => rank);
-    const highPair = pairs.reduce((a, b) => getRankValue(a) > getRankValue(b) ? a : b);
-    return { rank: 'two-pair', score: 200 + getRankValue(highPair), cards: sortCardsSystematically(cards, 'two-pair') };
+    const pairs = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 2)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    const kicker = Array.from(rankCounts.entries())
+      .find(([, count]) => count === 1)![0];
+    return { 
+      rank: 'two-pair', 
+      score: 2000000 + pairs[0] * 10000 + pairs[1] * 100 + getRankValue(kicker), 
+      cards: sortCardsSystematically(cards, 'two-pair') 
+    };
   }
   
   if (counts[0] === 2) {
     const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
-    return { rank: 'pair', score: 100 + getRankValue(pairRank), cards: sortCardsSystematically(cards, 'pair') };
+    const kickers = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 1)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    return { 
+      rank: 'pair', 
+      score: 1000000 + getRankValue(pairRank) * 100000 + kickers[0] * 1000 + kickers[1] * 100 + kickers[2], 
+      cards: sortCardsSystematically(cards, 'pair') 
+    };
   }
   
-  return { rank: 'high-card', score: getRankValue(ranks[0]), cards: sortCardsSystematically(cards, 'high-card') };
+  const rankValues = ranks.map(getRankValue).sort((a, b) => b - a);
+  return { 
+    rank: 'high-card', 
+    score: rankValues[0] * 10000 + rankValues[1] * 1000 + rankValues[2] * 100 + rankValues[3] * 10 + rankValues[4], 
+    cards: sortCardsSystematically(cards, 'high-card') 
+  };
 }
 
 function checkStraight(ranks: Rank[]): { isStraight: boolean; highCard: number } {

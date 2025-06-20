@@ -80,7 +80,7 @@ const HandHistory: React.FC<HandHistoryProps> = ({ history, isOpen, onClose }) =
                             <span className="hand-type">{summary.handDescription}</span>
                           </div>
                           <div className="player-cards">
-                            {summary.cards.slice(0, 2).map((card, cardIndex) => (
+                            {summary.holeCards.map((card, cardIndex) => (
                               <Card
                                 key={cardIndex}
                                 card={card}

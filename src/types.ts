@@ -142,6 +142,7 @@ export interface HandSummary {
   handRank: string;
   handDescription: string;
   cards: Card[];
+  holeCards: Card[];
   isWinner: boolean;
 }
 
