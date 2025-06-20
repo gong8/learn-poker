@@ -3200,11 +3200,8 @@ body {
 .bet-amount {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-call);
-  background: rgba(59, 130, 246, 0.1);
+  color: var(--text-primary);
   padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-call);
   text-align: center;
 }
 
@@ -3252,8 +3249,7 @@ body {
 }
 
 :root.dark-mode .bet-amount {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: var(--color-call);
+  color: var(--text-primary);
 }
 
 /* Responsive adjustments */
@@ -3311,6 +3307,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  justify-content: center;
+  align-items: center;
 }
 
 .title-section h1 {

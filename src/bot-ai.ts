@@ -180,9 +180,21 @@ function makeDecisionBasedOnProfile(
   
   // Strong hands - be more aggressive based on profile
   if (adjustedHandStrength >= 0.65) {
-    // All-in with very strong hands (but much more controlled)
-    if (adjustedHandStrength >= profile.allInThreshold && validActions.includes('all-in') && random < (profile.aggressiveness * 0.3)) {
-      return { action: 'all-in' };
+    // All-in with very strong hands (much more controlled with additional constraints)
+    if (adjustedHandStrength >= profile.allInThreshold && validActions.includes('all-in') && random < (profile.aggressiveness * 0.15)) {
+      // Additional constraints to make all-ins much rarer
+      const stackToPotRatio = player.chips / Math.max(gameState.pot, gameState.bigBlind * 2);
+      const allInSize = player.chips;
+      const potOdds = calculatePotOdds(gameState, player);
+      
+      // Only all-in if:
+      // 1. We have a very strong hand (checked above)
+      // 2. Stack is relatively small (less than 20x pot) OR hand is extremely strong (>0.97)
+      // 3. Random chance is even lower for bigger stacks
+      if ((stackToPotRatio < 20 || adjustedHandStrength > 0.97) && 
+          random < (profile.aggressiveness * 0.1)) {
+        return { action: 'all-in' };
+      }
     }
     
     // Raise with strong hands

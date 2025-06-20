@@ -160,6 +160,7 @@ export interface GameState {
   players: Player[];
   communityCards: Card[];
   pot: number;
+  finalPot?: number; // Preserves final pot value for display during hand completion
   currentPlayerIndex: number;
   dealerIndex: number;
   smallBlindIndex: number;

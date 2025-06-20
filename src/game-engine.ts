@@ -12,7 +12,7 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
   players.push({
     id: 'human',
     name: 'You',
-    chips: 100,
+    chips: 1000,
     cards: [],
     isBot: false,
     isFolded: false,
@@ -28,7 +28,7 @@ export function createInitialGameState(playerCount: number, botCount: number, bo
     players.push({
       id: `bot-${i}`,
       name: getRandomBotName(),
-      chips: 100,
+      chips: 1000,
       cards: [],
       isBot: true,
       isFolded: false,
@@ -102,6 +102,7 @@ export function startNewHand(gameState: GameState): GameState {
   newState.deck = createDeck();
   newState.communityCards = [];
   newState.pot = 0;
+  newState.finalPot = undefined; // Clear preserved pot value
   newState.currentBet = Math.round(newState.bigBlind);
   newState.phase = 'preflop';
   newState.isGameActive = true;
@@ -141,6 +142,7 @@ export function startNewHand(gameState: GameState): GameState {
     firstAttempts++;
   } while (firstAttempts < newState.players.length && newState.players[newState.currentPlayerIndex].isEliminated);
   
+  // Capture starting chips BEFORE any bets are made
   const startingChips = newState.players.map(p => ({ id: p.id, chips: p.chips }));
   
   newState.players = newState.players.map((player, index) => ({
@@ -434,9 +436,18 @@ function determineWinner(gameState: GameState): void {
   
   if (activePlayers.length === 1) {
     activePlayers[0].chips = Math.round(activePlayers[0].chips + gameState.pot);
+    gameState.finalPot = gameState.pot; // Preserve pot value for display
     gameState.pot = 0;
     gameState.isGameActive = false;
     gameState.currentPlayerIndex = -1; // Clear turn highlight
+    
+    // Ensure all-in players who didn't win end up with 0 chips
+    gameState.players.forEach(player => {
+      if (player.isAllIn && player.id !== activePlayers[0].id && !player.isFolded) {
+        player.chips = 0;
+      }
+    });
+    
     calculateChipChanges(gameState, startingChips);
     // Ensure unique winner ID to prevent duplicate trophies
     const uniqueWinnerIds = Array.from(new Set([activePlayers[0].id]));
@@ -475,9 +486,18 @@ function determineWinner(gameState: GameState): void {
     });
   }
   
+  gameState.finalPot = gameState.pot; // Preserve pot value for display
   gameState.pot = 0;
   gameState.isGameActive = false;
   gameState.currentPlayerIndex = -1; // Clear turn highlight
+  
+  // Ensure all-in players who didn't win anything end up with 0 chips
+  gameState.players.forEach(player => {
+    if (player.isAllIn && !allWinnerIds.includes(player.id) && !player.isFolded) {
+      player.chips = 0;
+    }
+  });
+  
   calculateChipChanges(gameState, startingChips);
   // Ensure unique winner IDs to prevent duplicate trophies
   const uniqueWinnerIds = Array.from(new Set(allWinnerIds));

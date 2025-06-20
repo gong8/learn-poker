@@ -188,7 +188,7 @@ const PokerGame: React.FC = () => {
                 </div>
                 <div className="status-item pot">
                   <span className="status-label">Pot</span>
-                  <span className="status-value">{Math.floor(gameState.pot).toLocaleString()}</span>
+                  <span className="status-value">{Math.floor(gameState.finalPot || gameState.pot).toLocaleString()}</span>
                 </div>
               </div>
               <div className="community-cards-grid">
@@ -206,8 +206,8 @@ const PokerGame: React.FC = () => {
             <div className="players-grid-modern">
               {gameState.players.map((player, index) => {
                 const isWinner = !gameState.isGameActive && 
-                  gameState.lastHandChipChanges.some(change => 
-                    change.playerId === player.id && change.change > 0
+                  gameState.lastHandSummaries.some(summary => 
+                    summary.playerId === player.id && summary.isWinner
                   );
                 
                 return (

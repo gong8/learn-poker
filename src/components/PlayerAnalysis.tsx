@@ -97,7 +97,14 @@ const PlayerAnalysisPanel: React.FC<PlayerAnalysisProps> = ({
             className="analysis-value"
             style={{ color: analysis.expectedValue > 0 ? '#16a34a' : analysis.expectedValue < 0 ? '#dc2626' : '#6b7280' }}
           >
-            {analysis.expectedValue > 0 ? '+' : ''}{analysis.expectedValue.toFixed(0)}
+            {(() => {
+              const ev = analysis.expectedValue;
+              if (Math.abs(ev) < 0.5) {
+                // For near-zero values, show small non-zero numbers to avoid -0.0
+                return ev >= 0 ? '+0.1' : '-0.1';
+              }
+              return (ev > 0 ? '+' : '') + ev.toFixed(0);
+            })()}
           </span>
         </div>
         <div className="win-status">
