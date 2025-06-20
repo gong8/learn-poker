@@ -74,23 +74,23 @@ function normalizeHandScore(score: number, rank: HandRank): number {
     case 'royal-flush':
       return 1.0;
     case 'straight-flush':
-      return 0.95 + (score - 800) / 140 * 0.05; // 0.95-1.0
+      return 0.95 + Math.max(0, (score - 800) / 140) * 0.05; // 0.95-1.0
     case 'four-of-a-kind':
-      return 0.85 + (score - 700) / 140 * 0.10; // 0.85-0.95
+      return 0.85 + Math.max(0, (score - 700) / 140) * 0.10; // 0.85-0.95
     case 'full-house':
-      return 0.75 + (score - 600) / 140 * 0.10; // 0.75-0.85
+      return Math.max(0.75, 0.75 + Math.max(0, (score - 600) / 140) * 0.10); // min 0.75, up to 0.85
     case 'flush':
-      return 0.65 + (score - 500) / 140 * 0.10; // 0.65-0.75
+      return Math.max(0.65, 0.65 + Math.max(0, (score - 500) / 140) * 0.10); // min 0.65, up to 0.75
     case 'straight':
-      return 0.55 + (score - 400) / 140 * 0.10; // 0.55-0.65
+      return Math.max(0.55, 0.55 + Math.max(0, (score - 400) / 140) * 0.10); // min 0.55, up to 0.65
     case 'three-of-a-kind':
-      return 0.45 + (score - 300) / 140 * 0.10; // 0.45-0.55
+      return Math.max(0.45, 0.45 + Math.max(0, (score - 300) / 140) * 0.10); // min 0.45, up to 0.55
     case 'two-pair':
-      return 0.30 + (score - 200) / 140 * 0.15; // 0.30-0.45
+      return Math.max(0.30, 0.30 + Math.max(0, (score - 200) / 140) * 0.15); // min 0.30, up to 0.45
     case 'pair':
-      return 0.15 + (score - 100) / 140 * 0.15; // 0.15-0.30
+      return Math.max(0.15, 0.15 + Math.max(0, (score - 100) / 140) * 0.15); // min 0.15, up to 0.30
     case 'high-card':
-      return 0.05 + (score - 2) / 120 * 0.10; // 0.05-0.15
+      return Math.max(0.05, 0.05 + Math.max(0, (score - 2) / 120) * 0.10); // min 0.05, up to 0.15
     default:
       return Math.min(score / 900, 1);
   }

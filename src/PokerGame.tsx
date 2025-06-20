@@ -99,32 +99,29 @@ const PokerGame: React.FC = () => {
       const humanPlayerIndex = gameState.players.indexOf(humanPlayer);
       const isHumanTurn = gameState.currentPlayerIndex === humanPlayerIndex;
       
-      // Run analysis asynchronously to avoid blocking UI
-      setIsAnalyzing(true);
+      // Only run analysis when cards change or it's human's turn - not on every gameState change
+      const shouldAnalyze = isHumanTurn || !playerAnalysis || 
+        gameState.phase === 'preflop' || gameState.phase === 'flop' || 
+        gameState.phase === 'turn' || gameState.phase === 'river';
       
-      // Use setTimeout to defer analysis until after render
-      const analysisTimeout = setTimeout(async () => {
-        try {
-          const analysis = await analyzePlayer(gameState, humanPlayerIndex);
-          
-          // Only update recommendation if it's human's turn or if there's no current analysis
-          if (isHumanTurn || !playerAnalysis) {
+      if (shouldAnalyze) {
+        // Run analysis asynchronously to avoid blocking UI with debouncing
+        setIsAnalyzing(true);
+        
+        // Use setTimeout to defer analysis until after render with proper debouncing
+        const analysisTimeout = setTimeout(async () => {
+          try {
+            const analysis = await analyzePlayer(gameState, humanPlayerIndex);
             setPlayerAnalysis(analysis);
-          } else {
-            // Keep the same recommendation but update other stats
-            setPlayerAnalysis(prev => prev ? {
-              ...analysis,
-              recommendation: prev.recommendation
-            } : analysis);
+          } catch (error) {
+            console.error('Analysis failed:', error);
+          } finally {
+            setIsAnalyzing(false);
           }
-        } catch (error) {
-          console.error('Analysis failed:', error);
-        } finally {
-          setIsAnalyzing(false);
-        }
-      }, 0);
-      
-      return () => clearTimeout(analysisTimeout);
+        }, 200); // 200ms debounce to prevent excessive calculations
+        
+        return () => clearTimeout(analysisTimeout);
+      }
     }
   }, [gameState, showEliminationModal]);
 
@@ -153,19 +150,15 @@ const PokerGame: React.FC = () => {
         <div className="header-content">
           <div className="title-section">
             <h1>Learn Poker</h1>
-            <div className="game-info-compact">
-            </div>
           </div>
           <div className="header-actions">
-            {gameState && (
-              <button
-                className="header-btn history-btn"
-                onClick={() => setShowHandHistory(true)}
-                title="Hand History"
-              >
-                📋 History
-              </button>
-            )}
+            <button
+              className="header-btn history-btn"
+              onClick={() => setShowHandHistory(true)}
+              title="Hand History"
+            >
+              📋 History
+            </button>
             <button
               className="header-btn settings-btn"
               onClick={() => setShowSettingsModal(true)}

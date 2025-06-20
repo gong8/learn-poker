@@ -3300,40 +3300,86 @@ body {
 }
 
 .game-header-modern {
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-xl);
   margin-bottom: var(--spacing-lg);
-  box-shadow: 0 2px 8px var(--shadow-light);
+  box-shadow: 0 4px 16px var(--shadow-light);
+  backdrop-filter: blur(8px);
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 60px;
+  min-height: 50px;
+  gap: var(--spacing-lg);
 }
 
 .title-section {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  justify-content: center;
+  flex-direction: row;
+  gap: var(--spacing-xl);
+  justify-content: flex-start;
   align-items: center;
   flex: 1;
 }
 
 .title-section h1 {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
+  font-size: 2.5rem;
+  font-weight: 800;
   color: var(--text-primary);
   margin: 0;
+  text-shadow: 0 2px 4px var(--shadow-light);
+  letter-spacing: -0.5px;
 }
 
-.game-info-compact {
+.game-status-compact {
   display: flex;
   gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.game-status-compact .status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-width: 100px;
+  box-shadow: 0 2px 8px var(--shadow-light);
+  transition: all 0.3s ease;
+}
+
+.game-status-compact .status-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--shadow-light);
+}
+
+.game-status-compact .status-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.game-status-compact .status-value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.game-status-compact .phase-value {
+  color: var(--color-call);
+}
+
+.game-status-compact .pot-value {
+  color: var(--color-check);
 }
 
 .info-item {
@@ -3371,26 +3417,36 @@ body {
 
 .header-actions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   align-items: center;
 }
 
 .header-btn {
-  padding: 10px;
-  background: var(--bg-tertiary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: var(--transition-fast);
-  font-size: var(--font-size-lg);
-  color: var(--text-muted);
+  transition: all 0.3s ease;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px var(--shadow-light);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
 }
 
 .header-btn:hover {
   background: var(--bg-accent);
   border-color: var(--color-call);
-  color: var(--text-secondary);
-  transform: translateY(-1px);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--shadow-light);
+}
+
+.header-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px var(--shadow-light);
 }
 
 .game-layout-modern {

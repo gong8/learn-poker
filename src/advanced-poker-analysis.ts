@@ -127,8 +127,8 @@ function calculatePlayerEquity(
   const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isEliminated);
   const opponents = activePlayers.length - 1;
   
-  // Use fast approximation for real-time play, full Monte Carlo for deeper analysis
-  const iterations = communityCards.length >= 4 ? 500 : 1000; // Reduced iterations for speed
+  // Use fast approximation for real-time play to prevent EV fluctuation
+  const iterations = communityCards.length >= 4 ? 100 : 250; // Much lower iterations for stable EV
   
   return calculateAdvancedEquity(playerCards, communityCards, [], {
     iterations,

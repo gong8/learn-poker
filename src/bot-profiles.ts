@@ -40,20 +40,9 @@ export const BOT_PROFILES: Record<BotBehavior, BotProfile> = {
 };
 
 export function getRandomBotProfile(): BotProfile {
-  const behaviors: BotBehavior[] = ['conservative', 'balanced', 'aggressive'];
-  const weights = [0.4, 0.4, 0.2]; // 40% conservative, 40% balanced, 20% aggressive
-  
-  const random = Math.random();
-  let cumulativeWeight = 0;
-  
-  for (let i = 0; i < behaviors.length; i++) {
-    cumulativeWeight += weights[i];
-    if (random <= cumulativeWeight) {
-      return { ...BOT_PROFILES[behaviors[i]] };
-    }
-  }
-  
-  return { ...BOT_PROFILES.balanced };
+  const behaviors: BotBehavior[] = ['conservative', 'balanced', 'aggressive', 'random'];
+  const randomIndex = Math.floor(Math.random() * behaviors.length);
+  return { ...BOT_PROFILES[behaviors[randomIndex]] };
 }
 
 export function getBotProfile(behavior: BotBehavior): BotProfile {

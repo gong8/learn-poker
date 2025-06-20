@@ -130,6 +130,12 @@ function makeDecisionBasedOnProfile(
   const positionMultiplier = position === 'late' ? 1.2 : position === 'middle' ? 1.05 : 0.95;
   const adjustedHandStrength = handStrength * positionMultiplier * randomFactor;
   
+  // Special case: if player has very few chips compared to current bet, be more likely to fold
+  const chipsToBetRatio = player.chips / Math.max(gameState.currentBet, 1);
+  if (chipsToBetRatio < 2 && adjustedHandStrength < 0.7 && validActions.includes('fold')) {
+    return { action: 'fold' };
+  }
+
   // Check if we should fold based on profile threshold
   if (adjustedHandStrength < profile.foldThreshold) {
     if (validActions.includes('check')) {
