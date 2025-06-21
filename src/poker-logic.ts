@@ -389,10 +389,11 @@ function evaluateFiveCards(cards: Card[]): HandEvaluation {
       .map(([rank]) => getRankValue(rank))
       .sort((a, b) => b - a);
     const kicker = Array.from(rankCounts.entries())
-      .find(([, count]) => count === 1)![0];
+      .find(([, count]) => count === 1);
+    const kickerValue = kicker ? getRankValue(kicker[0]) : 0;
     return { 
       rank: 'two-pair', 
-      score: 2000000 + pairs[0] * 10000 + pairs[1] * 100 + getRankValue(kicker), 
+      score: 2000000 + pairs[0] * 10000 + pairs[1] * 100 + kickerValue, 
       cards: sortCardsSystematically(cards, 'two-pair') 
     };
   }
