@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 export interface GameSettings {
   darkMode: boolean;
   showAdvancedAnalysis: boolean;
+  showHoverHints: boolean;
   cardSize: 'small' | 'medium' | 'large';
   botSpeed: 'fast' | 'normal' | 'slow';
 }
@@ -10,6 +11,7 @@ export interface GameSettings {
 const defaultSettings: GameSettings = {
   darkMode: false,
   showAdvancedAnalysis: false,
+  showHoverHints: false,
   cardSize: 'medium',
   botSpeed: 'normal'
 };

@@ -498,8 +498,8 @@ function calculateSidePots(gameState: GameState): Array<{ amount: number; eligib
   const allPlayers = [...gameState.players];
   const activePlayers = allPlayers.filter(p => !p.isFolded && !p.isEliminated);
   
-  // Get all unique contribution amounts from all players (not just active ones)
-  const contributionAmounts = Array.from(new Set(allPlayers.map(p => p.totalContribution))).sort((a, b) => a - b);
+  // Get all unique contribution amounts from active players only
+  const contributionAmounts = Array.from(new Set(activePlayers.map(p => p.totalContribution))).sort((a, b) => a - b);
   
   const sidePots: Array<{ amount: number; eligiblePlayerIds: string[] }> = [];
   let previousContributionLevel = 0;
@@ -509,13 +509,14 @@ function calculateSidePots(gameState: GameState): Array<{ amount: number; eligib
     
     const contributionDifference = contributionLevel - previousContributionLevel;
     
-    // Count ALL players who contributed at least this level (including folded ones for pot calculation)
+    // Only count players who contributed at least this level for pot calculation
+    // This ensures each side pot only contains chips that were actually contested
     const contributingPlayers = allPlayers.filter(p => p.totalContribution >= contributionLevel);
     
-    // But only active players are eligible to win
+    // Only active players are eligible to win
     const eligiblePlayers = activePlayers.filter(p => p.totalContribution >= contributionLevel);
     
-    if (contributingPlayers.length > 0 && contributionDifference > 0) {
+    if (contributingPlayers.length > 0 && contributionDifference > 0 && eligiblePlayers.length > 0) {
       const potAmount = Math.round(contributingPlayers.length * contributionDifference);
       sidePots.push({
         amount: potAmount,

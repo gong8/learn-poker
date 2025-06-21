@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Action } from '../types';
+import React, { useState, useRef, useCallback } from 'react';
+import { Action, GameState, Card } from '../types';
+import { calculateHoverEV, HoverEVData, ActionEV } from '../hover-ev-calculator';
+import { useSettings } from '../contexts/SettingsContext';
+import EVTooltip from './EVTooltip';
 
 interface GameControlsProps {
   validActions: Action[];
@@ -10,6 +13,9 @@ interface GameControlsProps {
   potSize: number;
   isBigBlind?: boolean;
   isPreflop?: boolean;
+  gameState?: GameState;
+  playerCards?: Card[];
+  communityCards?: Card[];
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -20,12 +26,31 @@ const GameControls: React.FC<GameControlsProps> = ({
   minRaise,
   potSize,
   isBigBlind = false,
-  isPreflop = false
+  isPreflop = false,
+  gameState,
+  playerCards = [],
+  communityCards = []
 }) => {
+  const { settings } = useSettings();
   const minBetAmount = currentBet + minRaise;
   const maxBetAmount = playerChips;
   const [betAmount, setBetAmount] = useState(minBetAmount);
   const [customBet, setCustomBet] = useState(false);
+  const [hoveredAction, setHoveredAction] = useState<ActionEV | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [hoverEVData, setHoverEVData] = useState<HoverEVData | null>(null);
+  const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  const calculateEVForActions = useCallback(() => {
+    if (!gameState || playerCards.length === 0) return null;
+    
+    try {
+      return calculateHoverEV(gameState, playerCards, communityCards, validActions);
+    } catch (error) {
+      console.warn('EV calculation failed:', error);
+      return null;
+    }
+  }, [gameState, playerCards, communityCards, validActions]);
 
   const handleAction = (action: Action, amount?: number) => {
     if (action === 'bet' || action === 'raise') {
@@ -33,6 +58,41 @@ const GameControls: React.FC<GameControlsProps> = ({
     } else {
       onAction(action);
     }
+  };
+
+  const handleMouseEnter = (action: Action, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!settings.showHoverHints) return;
+    
+    const evData = calculateEVForActions();
+    if (!evData) return;
+
+    setHoverEVData(evData);
+    const actionKey = action === 'all-in' ? 'allIn' : action;
+    const actionEV = evData[actionKey as keyof HoverEVData];
+    
+    if (actionEV) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const tooltipWidth = 200; // min-width from CSS
+      
+      // Position to the right of the button, or left if not enough space
+      let xPos = rect.right + 10;
+      if (xPos + tooltipWidth > viewportWidth) {
+        xPos = rect.left - tooltipWidth - 10;
+      }
+      
+      // Position at button center vertically
+      setTooltipPosition({
+        x: xPos,
+        y: rect.top + rect.height / 2
+      });
+      setHoveredAction(actionEV);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredAction(null);
+    setHoverEVData(null);
   };
 
   const roundToBigBlindMultiple = (amount: number) => {
@@ -67,8 +127,11 @@ const GameControls: React.FC<GameControlsProps> = ({
               return (
                 <button
                   key={action}
+                  ref={(el) => { buttonRefs.current[action] = el; }}
                   className={`action-btn action-btn-${action}`}
                   onClick={() => handleAction(action)}
+                  onMouseEnter={(e) => handleMouseEnter(action, e)}
+                  onMouseLeave={handleMouseLeave}
                 >
                   {buttonText}
                 </button>
@@ -99,6 +162,11 @@ const GameControls: React.FC<GameControlsProps> = ({
                       preset.label === 'All In' ? 'all-in' : (validActions.includes('bet') ? 'bet' : 'raise'), 
                       preset.label === 'All In' ? undefined : preset.amount
                     )}
+                    onMouseEnter={(e) => handleMouseEnter(
+                      preset.label === 'All In' ? 'all-in' : (validActions.includes('bet') ? 'bet' : 'raise'),
+                      e
+                    )}
+                    onMouseLeave={handleMouseLeave}
                   >
                     <div className="preset-label">{preset.label}</div>
                     <div className="preset-amount">{preset.displayAmount || preset.amount}</div>
@@ -119,6 +187,8 @@ const GameControls: React.FC<GameControlsProps> = ({
                   <button
                     className="action-btn action-btn-bet"
                     onClick={() => handleAction(validActions.includes('bet') ? 'bet' : 'raise')}
+                    onMouseEnter={(e) => handleMouseEnter(validActions.includes('bet') ? 'bet' : 'raise', e)}
+                    onMouseLeave={handleMouseLeave}
                   >
                     {validActions.includes('bet') ? 'Bet' : 'Raise'}
                   </button>
@@ -140,6 +210,14 @@ const GameControls: React.FC<GameControlsProps> = ({
           </div>
         )}
       </div>
+      
+      {hoveredAction && (
+        <EVTooltip
+          actionEV={hoveredAction}
+          position={tooltipPosition}
+          visible={true}
+        />
+      )}
     </div>
   );
 };

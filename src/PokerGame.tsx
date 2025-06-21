@@ -283,6 +283,9 @@ const PokerGame: React.FC = () => {
                 potSize={gameState.pot}
                 isBigBlind={gameState.players.indexOf(humanPlayer) === gameState.bigBlindIndex}
                 isPreflop={gameState.phase === 'preflop'}
+                gameState={gameState}
+                playerCards={humanPlayer.cards}
+                communityCards={gameState.communityCards}
               />
               <AdvancedAnalysisPanel 
                 analysis={playerAnalysis || {

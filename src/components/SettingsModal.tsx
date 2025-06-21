@@ -70,6 +70,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 Show Advanced Analysis by Default
               </label>
             </div>
+            <div className="setting-item">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.showHoverHints}
+                  onChange={(e) => updateSetting('showHoverHints', e.target.checked)}
+                />
+                <span className="checkmark"></span>
+                Show EV Hints on Hover
+              </label>
+            </div>
           </div>
 
           {/* Game Experience Settings */}
