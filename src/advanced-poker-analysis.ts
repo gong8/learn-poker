@@ -312,7 +312,7 @@ function calculateAdvancedEV(
     return gameState.pot * equityResult.equity;
   }
   
-  // Basic EV calculation
+  // Basic EV calculation with clamping
   const winAmount = gameState.pot + betToCall;
   const loseAmount = betToCall;
   
@@ -354,7 +354,7 @@ function generateAdvancedRecommendation(
   }
   
   // Strong hands - be aggressive (check this BEFORE ICM pressure to avoid folding excellent hands)
-  if (equityResult.handStrength > 0.8 || equityResult.equity > 0.75) {
+  if (equityResult.handStrength > 0.65 || equityResult.equity > 0.60) {
     if (validActions.includes('raise')) return 'raise';
     if (validActions.includes('bet')) return 'bet';
     if (validActions.includes('all-in') && tournamentData.stackCategory === 'short') return 'all-in';
@@ -362,13 +362,13 @@ function generateAdvancedRecommendation(
   }
   
   // High ICM pressure - play tighter (but only for non-premium hands)
-  if (tournamentData.icmPressure === 'high' && equityResult.equity < 0.5 && equityResult.handStrength < 0.7) {
+  if (tournamentData.icmPressure === 'high' && equityResult.equity < 0.45 && equityResult.handStrength < 0.55) {
     if (betToCall > 0) return 'fold';
     if (validActions.includes('check')) return 'check';
   }
   
   // Good draws with proper odds
-  if (equityResult.outs >= 8 && equityResult.equity > 0.3) {
+  if (equityResult.outs >= 8 && equityResult.equity > 0.30) {
     const potOdds = gameState.pot / Math.max(1, betToCall);
     if (potOdds > 2 || betToCall === 0) {
       if (validActions.includes('call')) return 'call';
@@ -377,7 +377,7 @@ function generateAdvancedRecommendation(
   }
   
   // Medium strength hands
-  if (equityResult.equity > 0.4 && equityResult.handStrength > 0.5) {
+  if (equityResult.equity > 0.35 && equityResult.handStrength > 0.40) {
     if (betToCall === 0) {
       if (validActions.includes('bet') && betSizing.optimalSize <= 50) return 'bet';
       if (validActions.includes('check')) return 'check';

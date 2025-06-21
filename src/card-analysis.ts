@@ -69,30 +69,42 @@ export function calculateHandStrength(playerCards: Card[], communityCards: Card[
 }
 
 function normalizeHandScore(score: number, rank: HandRank): number {
-  // Better normalization that makes hands feel appropriately strong
+  // REALISTIC hand strength based on proper score scale from poker-logic
+  // Now handles the correct million-scale scores from evaluateHand
+  let normalizedScore;
+  
   switch (rank) {
     case 'royal-flush':
-      return 1.0;
+      return 0.95; // Only royal flush gets near certainty
     case 'straight-flush':
-      return 0.95 + Math.max(0, (score - 800) / 140) * 0.05; // 0.95-1.0
+      normalizedScore = (score - 8000000) / 1000000; // 8M base, normalize within range
+      return 0.85 + Math.min(0.05, normalizedScore * 0.05);
     case 'four-of-a-kind':
-      return 0.85 + Math.max(0, (score - 700) / 140) * 0.10; // 0.85-0.95
+      normalizedScore = (score - 7000000) / 1000000; // 7M base
+      return 0.75 + Math.min(0.05, normalizedScore * 0.05);
     case 'full-house':
-      return Math.max(0.75, 0.75 + Math.max(0, (score - 600) / 140) * 0.10); // min 0.75, up to 0.85
+      normalizedScore = (score - 6000000) / 1000000; // 6M base
+      return 0.65 + Math.min(0.05, normalizedScore * 0.05);
     case 'flush':
-      return Math.max(0.65, 0.65 + Math.max(0, (score - 500) / 140) * 0.10); // min 0.65, up to 0.75
+      normalizedScore = (score - 5000000) / 1000000; // 5M base
+      return 0.50 + Math.min(0.08, normalizedScore * 0.08);
     case 'straight':
-      return Math.max(0.55, 0.55 + Math.max(0, (score - 400) / 140) * 0.10); // min 0.55, up to 0.65
+      normalizedScore = (score - 4000000) / 1000000; // 4M base
+      return 0.45 + Math.min(0.05, normalizedScore * 0.05);
     case 'three-of-a-kind':
-      return Math.max(0.45, 0.45 + Math.max(0, (score - 300) / 140) * 0.10); // min 0.45, up to 0.55
+      normalizedScore = (score - 3000000) / 1000000; // 3M base
+      return 0.35 + Math.min(0.08, normalizedScore * 0.08);
     case 'two-pair':
-      return Math.max(0.30, 0.30 + Math.max(0, (score - 200) / 140) * 0.15); // min 0.30, up to 0.45
+      normalizedScore = (score - 2000000) / 1000000; // 2M base
+      return 0.25 + Math.min(0.08, normalizedScore * 0.08);
     case 'pair':
-      return Math.max(0.15, 0.15 + Math.max(0, (score - 100) / 140) * 0.15); // min 0.15, up to 0.30
+      normalizedScore = (score - 1000000) / 1000000; // 1M base
+      return 0.15 + Math.min(0.10, normalizedScore * 0.10);
     case 'high-card':
-      return Math.max(0.05, 0.05 + Math.max(0, (score - 2) / 120) * 0.10); // min 0.05, up to 0.15
+      normalizedScore = score / 200000; // High card max ~200k
+      return 0.05 + Math.min(0.15, normalizedScore * 0.15);
     default:
-      return Math.min(score / 900, 1);
+      return Math.min(0.60, score / 9000000); // Fallback
   }
 }
 
@@ -106,35 +118,54 @@ function calculatePreFlopStrength(playerCards: Card[]): number {
   const isSuited = card1.suit === card2.suit;
   const gap = Math.abs(rank1 - rank2);
   
-  let strength = 0;
-  
   if (isPair) {
-    if (rank1 >= 12) strength = 0.9; // AA, KK, QQ
-    else if (rank1 >= 9) strength = 0.8; // JJ, TT, 99
-    else if (rank1 >= 6) strength = 0.6; // 88, 77, 66
-    else strength = 0.4; // Low pairs
-  } else {
-    const highCard = Math.max(rank1, rank2);
-    const lowCard = Math.min(rank1, rank2);
-    
-    if (highCard === 14) { // Ace
-      if (lowCard >= 12) strength = 0.85; // AK, AQ
-      else if (lowCard >= 10) strength = 0.75; // AJ, AT
-      else if (lowCard >= 8) strength = 0.65; // A9, A8
-      else strength = 0.5; // A7 and below
-    } else if (highCard >= 12) { // K or Q
-      if (lowCard >= 10) strength = 0.7; // KQ, KJ, QJ
-      else if (lowCard >= 8) strength = 0.6; // K9, Q9, etc.
-      else strength = 0.4;
-    } else {
-      strength = 0.3;
-    }
-    
-    if (isSuited) strength += 0.1; // Suited bonus
-    if (gap <= 4 && !isPair) strength += 0.05; // Connector bonus
+    if (rank1 === 14) return 0.85; // AA - premium pair
+    if (rank1 === 13) return 0.82; // KK - very strong
+    if (rank1 === 12) return 0.78; // QQ - strong
+    if (rank1 === 11) return 0.74; // JJ - good
+    if (rank1 === 10) return 0.70; // TT - decent
+    if (rank1 === 9) return 0.65; // 99 - above average
+    if (rank1 >= 6) return 0.55 + (rank1 - 6) * 0.03; // 66-88: 55-64%
+    return 0.40 + (rank1 - 2) * 0.04; // 22-55: 40-52%
   }
   
-  return Math.min(strength, 1);
+  const highCard = Math.max(rank1, rank2);
+  const lowCard = Math.min(rank1, rank2);
+  let strength = 0;
+  
+  if (highCard === 14) { // Ace hands
+    if (lowCard === 13) strength = isSuited ? 0.75 : 0.68; // AK - premium hand
+    else if (lowCard === 12) strength = isSuited ? 0.68 : 0.60; // AQ  
+    else if (lowCard === 11) strength = isSuited ? 0.62 : 0.55; // AJ
+    else if (lowCard === 10) strength = isSuited ? 0.58 : 0.50; // AT
+    else if (lowCard >= 8) strength = isSuited ? 0.52 : 0.44; // A9, A8
+    else if (lowCard >= 5) strength = isSuited ? 0.48 : 0.38; // A7-A5
+    else strength = isSuited ? 0.42 : 0.32; // A4-A2
+  } else if (highCard === 13) { // King hands
+    if (lowCard === 12) strength = isSuited ? 0.60 : 0.52; // KQ
+    else if (lowCard === 11) strength = isSuited ? 0.56 : 0.48; // KJ
+    else if (lowCard === 10) strength = isSuited ? 0.52 : 0.44; // KT
+    else if (lowCard >= 8) strength = isSuited ? 0.46 : 0.38; // K9, K8
+    else strength = isSuited ? 0.40 : 0.32; // K7 and below
+  } else if (highCard === 12) { // Queen hands
+    if (lowCard === 11) strength = isSuited ? 0.54 : 0.46; // QJ
+    else if (lowCard === 10) strength = isSuited ? 0.50 : 0.42; // QT
+    else if (lowCard >= 8) strength = isSuited ? 0.44 : 0.36; // Q9, Q8
+    else strength = isSuited ? 0.38 : 0.30; // Q7 and below
+  } else if (highCard === 11) { // Jack hands
+    if (lowCard === 10) strength = isSuited ? 0.48 : 0.40; // JT
+    else if (lowCard === 9) strength = isSuited ? 0.42 : 0.34; // J9
+    else strength = isSuited ? 0.36 : 0.28; // J8 and below
+  } else if (highCard === 10) { // Ten hands
+    if (lowCard === 9) strength = isSuited ? 0.42 : 0.34; // T9
+    else if (lowCard === 8) strength = isSuited ? 0.38 : 0.30; // T8
+    else strength = isSuited ? 0.32 : 0.24; // T7 and below
+  } else {
+    // Low cards - weak but playable in some situations
+    strength = isSuited ? 0.28 : 0.20;
+  }
+  
+  return Math.max(0.15, Math.min(strength, 0.90));
 }
 
 function getRankValue(rank: Rank): number {
@@ -727,23 +758,27 @@ export function calculateExpectedValue(
   pot: number
 ): number {
   // If we can check for free, EV is always positive (no cost to see next card)
-  if (betToCall <= 0) return pot * equity;
+  if (betToCall <= 0) {
+    return pot * equity;
+  }
   
   if (remainingCards === 0) return 0;
   
-  // Use equity directly as win probability, don't double-count outs
-  const winProbability = Math.min(0.95, Math.max(0.05, equity));
+  // Use equity directly as win probability
+  const winProbability = equity;
   const winAmount = pot + betToCall;
   const loseAmount = betToCall;
   
-  return (winProbability * winAmount) - ((1 - winProbability) * loseAmount);
+  const ev = (winProbability * winAmount) - ((1 - winProbability) * loseAmount);
+  
+  return ev;
 }
 
 export function getRecommendation(analysis: PlayerAnalysis, validActions: string[]): 'fold' | 'call' | 'check' | 'bet' | 'raise' | 'all-in' {
   const { handStrength, potentialStrength, equity, expectedValue, outs, draws, winProbability } = analysis;
   
   // Premium hands - always aggressive
-  if (handStrength > 0.85 || equity > 0.8) {
+  if (handStrength > 0.75 || equity > 0.70) {
     if (validActions.includes('raise')) return 'raise';
     if (validActions.includes('bet')) return 'bet';
     if (validActions.includes('all-in')) return 'all-in';
@@ -751,7 +786,7 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
   }
   
   // Strong hands with good potential
-  if (handStrength > 0.7 || (potentialStrength > 0.8 && outs >= 8)) {
+  if (handStrength > 0.60 || (potentialStrength > 0.70 && outs >= 8)) {
     if (validActions.includes('raise')) return 'raise';
     if (validActions.includes('bet')) return 'bet';
     if (validActions.includes('call')) return 'call';
@@ -783,13 +818,13 @@ export function getRecommendation(analysis: PlayerAnalysis, validActions: string
   }
   
   // Medium strength hands with positive EV
-  if (expectedValue > 0 && (handStrength > 0.5 || winProbability > 0.4)) {
+  if (expectedValue > 0 && (handStrength > 0.40 || winProbability > 0.35)) {
     if (validActions.includes('call')) return 'call';
     if (validActions.includes('check')) return 'check';
   }
   
   // Marginal hands with very good pot odds (or free to see next card)
-  if ((analysis.potOdds === 0 || analysis.potOdds > 4) && (handStrength > 0.3 || outs > 4)) {
+  if ((analysis.potOdds === 0 || analysis.potOdds > 4) && (handStrength > 0.25 || outs > 4)) {
     if (validActions.includes('call')) return 'call';
     if (validActions.includes('check')) return 'check';
   }
@@ -843,7 +878,7 @@ function analyzePlayerLegacy(gameState: GameState, playerIndex: number): PlayerA
   const { outs, draws } = calculateAdvancedOuts(player.cards, gameState.communityCards, deckTracker);
 
   // Adjust for number of opponents - fewer opponents = higher relative strength
-  const opponentAdjustment = Math.max(0.8, 1 - (numberOfOpponents - 1) * 0.1);
+  const opponentAdjustment = Math.max(0.85, 1 - (numberOfOpponents - 1) * 0.08);
   handStrength *= opponentAdjustment;
   equity *= opponentAdjustment;
 

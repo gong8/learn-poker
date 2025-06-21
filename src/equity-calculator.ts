@@ -156,7 +156,54 @@ function runMonteCarloSimulation(
  */
 function evaluateFinalHand(holeCards: Card[], communityCards: Card[]): EquityResult {
   const hand = evaluateHand([...holeCards, ...communityCards]);
-  const handStrength = hand.score / 7462; // Normalize to 0-1
+  
+  // Use proper normalization based on the actual score ranges from poker-logic
+  let handStrength;
+  let normalizedScore;
+  
+  switch (hand.rank) {
+    case 'royal-flush':
+      handStrength = 0.95;
+      break;
+    case 'straight-flush':
+      normalizedScore = (hand.score - 8000000) / 1000000;
+      handStrength = 0.85 + Math.min(0.05, normalizedScore * 0.05);
+      break;
+    case 'four-of-a-kind':
+      normalizedScore = (hand.score - 7000000) / 1000000;
+      handStrength = 0.75 + Math.min(0.05, normalizedScore * 0.05);
+      break;
+    case 'full-house':
+      normalizedScore = (hand.score - 6000000) / 1000000;
+      handStrength = 0.65 + Math.min(0.05, normalizedScore * 0.05);
+      break;
+    case 'flush':
+      normalizedScore = (hand.score - 5000000) / 1000000;
+      handStrength = 0.50 + Math.min(0.08, normalizedScore * 0.08);
+      break;
+    case 'straight':
+      normalizedScore = (hand.score - 4000000) / 1000000;
+      handStrength = 0.45 + Math.min(0.05, normalizedScore * 0.05);
+      break;
+    case 'three-of-a-kind':
+      normalizedScore = (hand.score - 3000000) / 1000000;
+      handStrength = 0.35 + Math.min(0.08, normalizedScore * 0.08);
+      break;
+    case 'two-pair':
+      normalizedScore = (hand.score - 2000000) / 1000000;
+      handStrength = 0.25 + Math.min(0.08, normalizedScore * 0.08);
+      break;
+    case 'pair':
+      normalizedScore = (hand.score - 1000000) / 1000000;
+      handStrength = 0.15 + Math.min(0.10, normalizedScore * 0.10);
+      break;
+    case 'high-card':
+      normalizedScore = hand.score / 200000; // High card scores up to ~200k
+      handStrength = 0.05 + Math.min(0.15, normalizedScore * 0.15);
+      break;
+    default:
+      handStrength = Math.min(0.60, hand.score / 9000000);
+  }
   
   return {
     equity: handStrength,
@@ -334,12 +381,69 @@ function calculateHandStrength(holeCards: Card[], communityCards: Card[]): numbe
   const allCards = [...holeCards, ...communityCards];
   
   if (allCards.length < 5) {
-    // Pre-flop or early street strength
-    return calculatePreFlopStrength(holeCards);
+    // Pre-flop or early street strength - but now properly scaled
+    if (allCards.length < 3) {
+      return calculatePreFlopStrength(holeCards);
+    }
+    
+    // For 3-4 cards, evaluate as partial hand with proper scaling
+    const hand = evaluateHand(allCards);
+    let normalizedScore;
+    
+    switch (hand.rank) {
+      case 'three-of-a-kind':
+        normalizedScore = (hand.score - 3000000) / 1000000;
+        return 0.35 + Math.min(0.08, normalizedScore * 0.08);
+      case 'two-pair':
+        normalizedScore = (hand.score - 2000000) / 1000000;
+        return 0.25 + Math.min(0.08, normalizedScore * 0.08);
+      case 'pair':
+        normalizedScore = (hand.score - 1000000) / 1000000;
+        return 0.15 + Math.min(0.10, normalizedScore * 0.10);
+      case 'high-card':
+        normalizedScore = hand.score / 200000;
+        return 0.05 + Math.min(0.15, normalizedScore * 0.15);
+      default:
+        return Math.min(0.60, hand.score / 9000000);
+    }
   }
 
   const hand = evaluateHand(allCards);
-  return hand.score / 7462; // Normalize based on total possible hand rankings
+  let normalizedScore;
+  
+  // Apply realistic strength scaling with proper score normalization
+  switch (hand.rank) {
+    case 'royal-flush': return 0.95;
+    case 'straight-flush': 
+      normalizedScore = (hand.score - 8000000) / 1000000;
+      return 0.85 + Math.min(0.05, normalizedScore * 0.05);
+    case 'four-of-a-kind': 
+      normalizedScore = (hand.score - 7000000) / 1000000;
+      return 0.75 + Math.min(0.05, normalizedScore * 0.05);
+    case 'full-house': 
+      normalizedScore = (hand.score - 6000000) / 1000000;
+      return 0.65 + Math.min(0.05, normalizedScore * 0.05);
+    case 'flush': 
+      normalizedScore = (hand.score - 5000000) / 1000000;
+      return 0.50 + Math.min(0.08, normalizedScore * 0.08);
+    case 'straight': 
+      normalizedScore = (hand.score - 4000000) / 1000000;
+      return 0.45 + Math.min(0.05, normalizedScore * 0.05);
+    case 'three-of-a-kind': 
+      normalizedScore = (hand.score - 3000000) / 1000000;
+      return 0.35 + Math.min(0.08, normalizedScore * 0.08);
+    case 'two-pair': 
+      normalizedScore = (hand.score - 2000000) / 1000000;
+      return 0.25 + Math.min(0.08, normalizedScore * 0.08);
+    case 'pair': 
+      normalizedScore = (hand.score - 1000000) / 1000000;
+      return 0.15 + Math.min(0.10, normalizedScore * 0.10);
+    case 'high-card': 
+      normalizedScore = hand.score / 200000;
+      return 0.05 + Math.min(0.15, normalizedScore * 0.15);
+    default: 
+      return Math.min(0.60, hand.score / 9000000);
+  }
 }
 
 /**
@@ -358,32 +462,32 @@ function calculatePreFlopStrength(holeCards: Card[]): number {
   let strength = 0;
 
   if (isPair) {
-    if (rank1 >= 12) strength = 0.9; // AA, KK, QQ
-    else if (rank1 >= 9) strength = 0.8; // JJ, TT, 99
-    else if (rank1 >= 6) strength = 0.6; // 88, 77, 66
-    else strength = 0.4; // Low pairs
+    if (rank1 >= 12) strength = 0.70; // AA, KK, QQ - reduced from 0.9
+    else if (rank1 >= 9) strength = 0.55; // JJ, TT, 99 - reduced from 0.8
+    else if (rank1 >= 6) strength = 0.40; // 88, 77, 66 - reduced from 0.6
+    else strength = 0.25; // Low pairs - reduced from 0.4
   } else {
     const highCard = Math.max(rank1, rank2);
     const lowCard = Math.min(rank1, rank2);
 
     if (highCard === 14) { // Ace
-      if (lowCard >= 12) strength = 0.85; // AK, AQ
-      else if (lowCard >= 10) strength = 0.75; // AJ, AT
-      else if (lowCard >= 8) strength = 0.65; // A9, A8
-      else strength = 0.5; // A7 and below
+      if (lowCard >= 12) strength = 0.55; // AK, AQ - reduced from 0.85
+      else if (lowCard >= 10) strength = 0.45; // AJ, AT - reduced from 0.75
+      else if (lowCard >= 8) strength = 0.35; // A9, A8 - reduced from 0.65
+      else strength = 0.25; // A7 and below - reduced from 0.5
     } else if (highCard >= 12) { // K or Q
-      if (lowCard >= 10) strength = 0.7; // KQ, KJ, QJ
-      else if (lowCard >= 8) strength = 0.6; // K9, Q9, etc.
-      else strength = 0.4;
+      if (lowCard >= 10) strength = 0.40; // KQ, KJ, QJ - reduced from 0.7
+      else if (lowCard >= 8) strength = 0.30; // K9, Q9, etc. - reduced from 0.6
+      else strength = 0.20; // reduced from 0.4
     } else {
-      strength = 0.3;
+      strength = 0.15; // reduced from 0.3
     }
 
-    if (suited) strength += 0.1; // Suited bonus
-    if (gap <= 4 && !isPair) strength += 0.05; // Connector bonus
+    if (suited) strength += 0.05; // Suited bonus - reduced from 0.1
+    if (gap <= 4 && !isPair) strength += 0.03; // Connector bonus - reduced from 0.05
   }
 
-  return Math.min(strength, 1);
+  return Math.min(strength, 0.70); // Cap at 70% instead of 100%
 }
 
 /**
@@ -463,5 +567,14 @@ export function calculateExpectedValue(
   loseProbability: number,
   amountLost: number
 ): number {
-  return (winProbability * amountWon) - (loseProbability * amountLost);
+  // Clamp probabilities to prevent extreme calculations
+  const clampedWinProb = Math.min(0.95, Math.max(0.05, winProbability)); // Never 100% certainty
+  const clampedLoseProb = Math.min(0.95, Math.max(0.05, loseProbability));
+  
+  // Calculate EV and clamp to reasonable range
+  const ev = (clampedWinProb * amountWon) - (clampedLoseProb * amountLost);
+  
+  // Prevent EV from going into millions - clamp to reasonable range relative to pot
+  const maxReasonableEV = Math.max(amountWon, amountLost) * 1.5; // Reduced multiplier
+  return Math.min(maxReasonableEV, Math.max(-maxReasonableEV, ev));
 }

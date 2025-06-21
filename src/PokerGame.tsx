@@ -62,11 +62,16 @@ const PokerGame: React.FC = () => {
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
-    if (currentPlayer && currentPlayer.isBot && !currentPlayer.isFolded && !currentPlayer.isAllIn) {
+    if (currentPlayer && currentPlayer.isBot && !currentPlayer.isFolded && !currentPlayer.isAllIn && !currentPlayer.isEliminated) {
       // Add safety check to prevent infinite loops
-      const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn);
+      const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isAllIn && !p.isEliminated);
       if (activePlayers.length <= 1) {
         return; // Hand should be ending, don't process more bot actions
+      }
+      
+      // Additional safety: prevent processing if current player index is invalid
+      if (gameState.currentPlayerIndex >= gameState.players.length) {
+        return;
       }
       
       const getBotDelay = () => {
@@ -78,8 +83,12 @@ const PokerGame: React.FC = () => {
       };
 
       const timer = setTimeout(() => {
-        const botDecision = makeBotDecision(gameState, gameState.currentPlayerIndex);
-        handlePlayerAction(botDecision.action, botDecision.betAmount);
+        // Double-check game state is still valid before making decision
+        if (gameState && gameState.isGameActive && gameState.currentPlayerIndex >= 0 && 
+            gameState.currentPlayerIndex < gameState.players.length) {
+          const botDecision = makeBotDecision(gameState, gameState.currentPlayerIndex);
+          handlePlayerAction(botDecision.action, botDecision.betAmount);
+        }
       }, getBotDelay());
 
       return () => clearTimeout(timer);
@@ -201,13 +210,13 @@ const PokerGame: React.FC = () => {
                 const isWinner = !gameState.isGameActive && 
                   gameState.lastHandSummaries.some(summary => 
                     summary.playerId === player.id && summary.isWinner
-                  );
+                  ) && player.id === gameState.lastHandSummaries.find(s => s.playerId === player.id)?.playerId;
                 
                 return (
                   <Player
                     key={player.id}
                     player={player}
-                    isCurrentPlayer={gameState.isGameActive && index === gameState.currentPlayerIndex}
+                    isCurrentPlayer={gameState.isGameActive && index === gameState.currentPlayerIndex && gameState.currentPlayerIndex >= 0 && gameState.currentPlayerIndex < gameState.players.length}
                     isDealer={index === gameState.dealerIndex}
                     isSmallBlind={index === gameState.smallBlindIndex}
                     isBigBlind={index === gameState.bigBlindIndex}

@@ -223,7 +223,7 @@ export function processPlayerAction(gameState: GameState, action: Action, betAmo
       break;
       
     case 'call':
-      const callAmount = Math.min(currentPlayer.chips, newState.currentBet - currentPlayer.currentBet);
+      const callAmount = Math.min(currentPlayer.chips, Math.max(0, newState.currentBet - currentPlayer.currentBet));
       currentPlayer.chips = Math.round(currentPlayer.chips - callAmount);
       currentPlayer.currentBet = Math.round(currentPlayer.currentBet + callAmount);
       currentPlayer.totalContribution = Math.round(currentPlayer.totalContribution + callAmount);
@@ -496,7 +496,7 @@ function determineWinner(gameState: GameState): void {
 
 function calculateSidePots(gameState: GameState): Array<{ amount: number; eligiblePlayerIds: string[] }> {
   const allPlayers = [...gameState.players];
-  const activePlayers = allPlayers.filter(p => !p.isFolded);
+  const activePlayers = allPlayers.filter(p => !p.isFolded && !p.isEliminated);
   
   // Get all unique contribution amounts from all players (not just active ones)
   const contributionAmounts = Array.from(new Set(allPlayers.map(p => p.totalContribution))).sort((a, b) => a - b);
@@ -505,7 +505,7 @@ function calculateSidePots(gameState: GameState): Array<{ amount: number; eligib
   let previousContributionLevel = 0;
   
   for (const contributionLevel of contributionAmounts) {
-    if (contributionLevel === 0) continue; // Skip zero contributions
+    if (contributionLevel <= 0) continue; // Skip zero or negative contributions
     
     const contributionDifference = contributionLevel - previousContributionLevel;
     
@@ -516,7 +516,7 @@ function calculateSidePots(gameState: GameState): Array<{ amount: number; eligib
     const eligiblePlayers = activePlayers.filter(p => p.totalContribution >= contributionLevel);
     
     if (contributingPlayers.length > 0 && contributionDifference > 0) {
-      const potAmount = contributingPlayers.length * contributionDifference;
+      const potAmount = Math.round(contributingPlayers.length * contributionDifference);
       sidePots.push({
         amount: potAmount,
         eligiblePlayerIds: eligiblePlayers.map(p => p.id)
@@ -524,6 +524,12 @@ function calculateSidePots(gameState: GameState): Array<{ amount: number; eligib
     }
     
     previousContributionLevel = contributionLevel;
+  }
+  
+  // Verify total side pot amounts equal the main pot
+  const totalSidePotAmount = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
+  if (Math.abs(totalSidePotAmount - gameState.pot) > 1) { // Allow for small rounding differences
+    console.warn(`Side pot calculation mismatch: ${totalSidePotAmount} vs ${gameState.pot}`);
   }
   
   return sidePots;
@@ -550,6 +556,9 @@ function calculateHandSummaries(gameState: GameState, winnerIds: string[]): void
     players.findIndex(p => p.id === player.id) === index
   );
   
+  // Ensure unique winner IDs to prevent duplicate trophies
+  const uniqueWinnerIds = Array.from(new Set(winnerIds));
+  
   gameState.lastHandSummaries = uniquePlayers
     .filter(player => !player.isFolded && player.cards.length > 0)
     .map(player => {
@@ -561,7 +570,7 @@ function calculateHandSummaries(gameState: GameState, winnerIds: string[]): void
         handDescription: getHandTypeDisplayName(hand.rank),
         cards: hand.cards,
         holeCards: player.cards,
-        isWinner: winnerIds.includes(player.id)
+        isWinner: uniqueWinnerIds.includes(player.id)
       };
     })
     .sort((a, b) => {

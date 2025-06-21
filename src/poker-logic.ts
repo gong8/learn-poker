@@ -88,41 +88,121 @@ function evaluatePartialHand(cards: Card[]): HandEvaluation {
   const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
   const isSuited = suits.length >= 2 && suits.every(suit => suit === suits[0]);
   
+  // Check for trips in partial hands (3+ cards)
+  if (counts[0] === 3) {
+    const tripRank = Array.from(rankCounts.entries()).find(([, count]) => count === 3)![0];
+    const kickers = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 1)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    const kickerScore = kickers.length > 0 ? kickers[0] * 100 + (kickers[1] || 0) : 0;
+    return { 
+      rank: 'three-of-a-kind', 
+      score: 3000000 + getRankValue(tripRank) * 10000 + kickerScore, 
+      cards: sortCardsSystematically(cards, 'three-of-a-kind') 
+    };
+  }
+  
+  // Check for two pair in partial hands (4+ cards)
+  if (counts[0] === 2 && counts[1] === 2) {
+    const pairs = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 2)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    const kicker = Array.from(rankCounts.entries())
+      .find(([, count]) => count === 1);
+    const kickerValue = kicker ? getRankValue(kicker[0]) : 0;
+    return { 
+      rank: 'two-pair', 
+      score: 2000000 + pairs[0] * 10000 + pairs[1] * 100 + kickerValue, 
+      cards: sortCardsSystematically(cards, 'two-pair') 
+    };
+  }
+  
   // Check for pairs in partial hands
   if (counts[0] === 2) {
     const pairRank = Array.from(rankCounts.entries()).find(([, count]) => count === 2)![0];
+    const kickers = Array.from(rankCounts.entries())
+      .filter(([, count]) => count === 1)
+      .map(([rank]) => getRankValue(rank))
+      .sort((a, b) => b - a);
+    const kickerScore = kickers[0] * 1000 + (kickers[1] || 0) * 100 + (kickers[2] || 0);
     return { 
       rank: 'pair', 
-      score: 100 + getRankValue(pairRank), 
+      score: 1000000 + getRankValue(pairRank) * 100000 + kickerScore, 
       cards: sortCardsSystematically(cards, 'pair') 
     };
   }
   
-  // For partial hands, suited cards are just high card with potential
-  // Don't call it a flush unless we actually have 5 cards
+  // Check for potential straight in partial hands (3+ cards)
+  if (cards.length >= 3) {
+    const straightResult = checkPartialStraightDraw(ranks);
+    if (straightResult.isPotentialStraight) {
+      // Give it a modest bonus but keep it as high-card
+      const rankValues = ranks.map(getRankValue).sort((a, b) => b - a);
+      const baseScore = rankValues[0] * 10000 + rankValues[1] * 1000 + rankValues[2] * 100 + (rankValues[3] || 0) * 10 + (rankValues[4] || 0);
+      return { 
+        rank: 'high-card', 
+        score: baseScore + 5000, // Small straight draw bonus
+        cards: sortCardsSystematically(cards, 'high-card') 
+      };
+    }
+  }
   
-  // For partial hands with < 5 cards, we should only ever return high-card or pair
-  // Don't claim straights or flushes until we have enough cards
+  // Check for potential flush in partial hands (3+ suited)
+  if (cards.length >= 3 && isSuited) {
+    const rankValues = ranks.map(getRankValue).sort((a, b) => b - a);
+    const baseScore = rankValues[0] * 10000 + rankValues[1] * 1000 + rankValues[2] * 100 + (rankValues[3] || 0) * 10 + (rankValues[4] || 0);
+    return { 
+      rank: 'high-card', 
+      score: baseScore + 3000, // Small flush draw bonus
+      cards: sortCardsSystematically(cards, 'high-card') 
+    };
+  }
   
-  // Default to high card
+  // Default to high card with proper scoring scale
+  const rankValues = ranks.map(getRankValue).sort((a, b) => b - a);
+  const score = rankValues[0] * 10000 + rankValues[1] * 1000 + (rankValues[2] || 0) * 100 + (rankValues[3] || 0) * 10 + (rankValues[4] || 0);
   return { 
     rank: 'high-card', 
-    score: getRankValue(ranks[0]), 
+    score: score, 
     cards: sortCardsSystematically(cards, 'high-card') 
   };
 }
 
-function checkPartialStraight(ranks: Rank[]): { isPotentialStraight: boolean; highCard: number } {
+function checkPartialStraightDraw(ranks: Rank[]): { isPotentialStraight: boolean; highCard: number } {
   const values = ranks.map(getRankValue).sort((a, b) => a - b);
   
-  // For 2-4 cards, check if they form a consecutive sequence
+  // For 3+ cards, check if they form a consecutive sequence or near-consecutive
+  if (values.length < 3) return { isPotentialStraight: false, highCard: 0 };
+  
+  // Check for perfect consecutive
+  let consecutive = true;
   for (let i = 0; i < values.length - 1; i++) {
     if (values[i + 1] - values[i] !== 1) {
-      return { isPotentialStraight: false, highCard: 0 };
+      consecutive = false;
+      break;
     }
   }
   
-  return { isPotentialStraight: true, highCard: values[values.length - 1] };
+  if (consecutive) {
+    return { isPotentialStraight: true, highCard: values[values.length - 1] };
+  }
+  
+  // Check for near-straight (1 gap)
+  if (values.length >= 3) {
+    const span = values[values.length - 1] - values[0];
+    if (span <= 4) { // Could make a straight
+      return { isPotentialStraight: true, highCard: values[values.length - 1] };
+    }
+  }
+  
+  // Check for wheel straight potential (A-2-3-4-5)
+  if (values.includes(14) && values.includes(2) && values.includes(3)) {
+    return { isPotentialStraight: true, highCard: 5 };
+  }
+  
+  return { isPotentialStraight: false, highCard: 0 };
 }
 
 function getCombinations<T>(arr: T[], k: number): T[][] {

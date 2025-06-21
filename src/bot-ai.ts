@@ -41,42 +41,11 @@ export function makeBotDecision(gameState: GameState, botIndex: number): BotDeci
 }
 
 function calculateHandStrength(player: Player, communityCards: Card[]): number {
-  if (communityCards.length === 0) {
-    return evaluatePreflopHand(player.cards);
-  }
-  
-  const allCards = [...player.cards, ...communityCards];
-  const handEvaluation = evaluateHand(allCards);
-  
-  const maxPossibleScore = 900;
-  return handEvaluation.score / maxPossibleScore;
+  // Use the standard card analysis function for consistency
+  const { calculateHandStrength: cardAnalysisStrength } = require('./card-analysis');
+  return cardAnalysisStrength(player.cards, communityCards);
 }
 
-function evaluatePreflopHand(cards: Card[]): number {
-  if (cards.length !== 2) return 0;
-  
-  const [card1, card2] = cards;
-  const rank1 = getRankValue(card1.rank);
-  const rank2 = getRankValue(card2.rank);
-  
-  const isPair = rank1 === rank2;
-  const isSuited = card1.suit === card2.suit;
-  const highCard = Math.max(rank1, rank2);
-  const lowCard = Math.min(rank1, rank2);
-  const gap = highCard - lowCard;
-  
-  let strength = 0;
-  
-  if (isPair) {
-    strength = 0.5 + (rank1 / 14) * 0.4;
-  } else {
-    strength = (highCard + lowCard) / 28;
-    if (isSuited) strength += 0.1;
-    if (gap <= 4) strength += 0.05;
-  }
-  
-  return Math.min(strength, 1);
-}
 
 function getRankValue(rank: string): number {
   const rankValues: Record<string, number> = {
@@ -132,12 +101,12 @@ function makeDecisionBasedOnProfile(
   
   // Special case: if player has very few chips compared to current bet, be more likely to fold
   const chipsToBetRatio = player.chips / Math.max(gameState.currentBet, 1);
-  if (chipsToBetRatio < 2 && adjustedHandStrength < 0.7 && validActions.includes('fold')) {
+  if (chipsToBetRatio < 2 && adjustedHandStrength < 0.55 && validActions.includes('fold')) {
     return { action: 'fold' };
   }
 
-  // Check if we should fold based on profile threshold
-  if (adjustedHandStrength < profile.foldThreshold) {
+  // Check if we should fold based on profile threshold using REALISTIC values
+  if (adjustedHandStrength < profile.foldThreshold) { 
     if (validActions.includes('check')) {
       return { action: 'check' };
     }
@@ -151,10 +120,10 @@ function makeDecisionBasedOnProfile(
     return validActions.includes('check') ? { action: 'check' } : { action: 'fold' };
   }
   
-  // Medium strength hands
-  if (adjustedHandStrength < 0.65) {
+  // Medium strength hands 
+  if (adjustedHandStrength < 0.75) {
     // Bluff occasionally based on profile
-    if (adjustedHandStrength < 0.4 && random < profile.bluffFrequency && validActions.includes('bet')) {
+    if (adjustedHandStrength < 0.45 && random < profile.bluffFrequency && validActions.includes('bet')) {
       const rawBetAmount = Math.min(player.chips, gameState.pot * profile.betSizingMultiplier * 0.5);
       const betAmount = roundToBigBlindMultiple(rawBetAmount, gameState.bigBlind);
       return { action: 'bet', betAmount };
@@ -184,21 +153,22 @@ function makeDecisionBasedOnProfile(
     return { action: 'check' };
   }
   
-  // Strong hands - be more aggressive based on profile
-  if (adjustedHandStrength >= 0.65) {
+  // Strong hands - be more aggressive based on profile 
+  if (adjustedHandStrength >= 0.75) {
     // All-in with very strong hands (much more controlled with additional constraints)
-    if (adjustedHandStrength >= profile.allInThreshold && validActions.includes('all-in') && random < (profile.aggressiveness * 0.15)) {
+    if (adjustedHandStrength >= profile.allInThreshold && validActions.includes('all-in') && random < (profile.aggressiveness * 0.05)) {
       // Additional constraints to make all-ins much rarer
       const stackToPotRatio = player.chips / Math.max(gameState.pot, gameState.bigBlind * 2);
-      const allInSize = player.chips;
-      const potOdds = calculatePotOdds(gameState, player);
+      const activePlayers = gameState.players.filter(p => !p.isFolded && !p.isEliminated).length;
       
       // Only all-in if:
       // 1. We have a very strong hand (checked above)
-      // 2. Stack is relatively small (less than 20x pot) OR hand is extremely strong (>0.97)
+      // 2. Stack is relatively small (less than 10x pot) OR hand is extremely strong (>0.90)
       // 3. Random chance is even lower for bigger stacks
-      if ((stackToPotRatio < 20 || adjustedHandStrength > 0.97) && 
-          random < (profile.aggressiveness * 0.1)) {
+      // 4. Not too many players left (avoid early all-ins in full tables)
+      if ((stackToPotRatio < 10 || adjustedHandStrength > 0.90) && 
+          activePlayers <= 4 && 
+          random < (profile.aggressiveness * 0.03)) {
         return { action: 'all-in' };
       }
     }
