@@ -230,11 +230,11 @@ function calculateDrawEquities(
   if (communityCards.length >= 5) return draws;
 
   // Flush draws
-  const flushDraw = analyzeFlushDraw(allCards, remainingCards);
+  const flushDraw = analyzeFlushDraw(allCards, remainingCards, communityCards);
   if (flushDraw) draws.push(flushDraw);
 
   // Straight draws
-  const straightDraws = analyzeStraightDraws(allCards, remainingCards);
+  const straightDraws = analyzeStraightDraws(allCards, remainingCards, communityCards);
   draws.push(...straightDraws);
 
   // Pair draws
@@ -247,7 +247,7 @@ function calculateDrawEquities(
 /**
  * Analyze flush draw possibilities
  */
-function analyzeFlushDraw(allCards: Card[], remainingCards: Card[]): DrawEquity | null {
+function analyzeFlushDraw(allCards: Card[], remainingCards: Card[], communityCards: Card[]): DrawEquity | null {
   const suitCounts = new Map<string, number>();
   
   allCards.forEach(card => {
@@ -259,7 +259,7 @@ function analyzeFlushDraw(allCards: Card[], remainingCards: Card[]): DrawEquity 
       // Flush draw
       const outs = remainingCards.filter(card => card.suit === suit).length;
       if (outs > 0) {
-        const cardsLeft = 5 - allCards.length;
+        const cardsLeft = 5 - communityCards.length;
         return {
           type: 'flush',
           outs,
@@ -278,7 +278,7 @@ function analyzeFlushDraw(allCards: Card[], remainingCards: Card[]): DrawEquity 
 /**
  * Analyze straight draw possibilities
  */
-function analyzeStraightDraws(allCards: Card[], remainingCards: Card[]): DrawEquity[] {
+function analyzeStraightDraws(allCards: Card[], remainingCards: Card[], communityCards: Card[]): DrawEquity[] {
   const draws: DrawEquity[] = [];
   const ranks = allCards.map(card => getRankValue(card.rank));
   const uniqueRanks = Array.from(new Set(ranks)).sort((a, b) => a - b);
@@ -298,7 +298,7 @@ function analyzeStraightDraws(allCards: Card[], remainingCards: Card[]): DrawEqu
       });
 
       if (outs > 0) {
-        const cardsLeft = 5 - allCards.length;
+        const cardsLeft = 5 - communityCards.length;
         const drawType = missing.length === 1 ? 
           (missing[0] === straightRanks[0] || missing[0] === straightRanks[4] ? 'open-ended' : 'gutshot') :
           'double-gutshot';
@@ -462,32 +462,32 @@ function calculatePreFlopStrength(holeCards: Card[]): number {
   let strength = 0;
 
   if (isPair) {
-    if (rank1 >= 12) strength = 0.70; // AA, KK, QQ - reduced from 0.9
-    else if (rank1 >= 9) strength = 0.55; // JJ, TT, 99 - reduced from 0.8
-    else if (rank1 >= 6) strength = 0.40; // 88, 77, 66 - reduced from 0.6
-    else strength = 0.25; // Low pairs - reduced from 0.4
+    if (rank1 >= 12) strength = 0.85; // AA, KK, QQ
+    else if (rank1 >= 9) strength = 0.75; // JJ, TT, 99
+    else if (rank1 >= 6) strength = 0.60; // 88, 77, 66
+    else strength = 0.45; // Low pairs
   } else {
     const highCard = Math.max(rank1, rank2);
     const lowCard = Math.min(rank1, rank2);
 
     if (highCard === 14) { // Ace
-      if (lowCard >= 12) strength = 0.55; // AK, AQ - reduced from 0.85
-      else if (lowCard >= 10) strength = 0.45; // AJ, AT - reduced from 0.75
-      else if (lowCard >= 8) strength = 0.35; // A9, A8 - reduced from 0.65
-      else strength = 0.25; // A7 and below - reduced from 0.5
+      if (lowCard >= 12) strength = 0.75; // AK, AQ
+      else if (lowCard >= 10) strength = 0.65; // AJ, AT
+      else if (lowCard >= 8) strength = 0.55; // A9, A8
+      else strength = 0.45; // A7 and below
     } else if (highCard >= 12) { // K or Q
-      if (lowCard >= 10) strength = 0.40; // KQ, KJ, QJ - reduced from 0.7
-      else if (lowCard >= 8) strength = 0.30; // K9, Q9, etc. - reduced from 0.6
-      else strength = 0.20; // reduced from 0.4
+      if (lowCard >= 10) strength = 0.60; // KQ, KJ, QJ
+      else if (lowCard >= 8) strength = 0.50; // K9, Q9, etc.
+      else strength = 0.40;
     } else {
-      strength = 0.15; // reduced from 0.3
+      strength = 0.30;
     }
 
-    if (suited) strength += 0.05; // Suited bonus - reduced from 0.1
-    if (gap <= 4 && !isPair) strength += 0.03; // Connector bonus - reduced from 0.05
+    if (suited) strength += 0.08; // Suited bonus
+    if (gap <= 4 && !isPair) strength += 0.05; // Connector bonus
   }
 
-  return Math.min(strength, 0.70); // Cap at 70% instead of 100%
+  return Math.min(strength, 0.90);
 }
 
 /**
@@ -567,14 +567,9 @@ export function calculateExpectedValue(
   loseProbability: number,
   amountLost: number
 ): number {
-  // Clamp probabilities to prevent extreme calculations
-  const clampedWinProb = Math.min(0.95, Math.max(0.05, winProbability)); // Never 100% certainty
-  const clampedLoseProb = Math.min(0.95, Math.max(0.05, loseProbability));
+  // Use actual probabilities without artificial clamping
+  const ev = (winProbability * amountWon) - (loseProbability * amountLost);
   
-  // Calculate EV and clamp to reasonable range
-  const ev = (clampedWinProb * amountWon) - (clampedLoseProb * amountLost);
-  
-  // Prevent EV from going into millions - clamp to reasonable range relative to pot
-  const maxReasonableEV = Math.max(amountWon, amountLost) * 1.5; // Reduced multiplier
-  return Math.min(maxReasonableEV, Math.max(-maxReasonableEV, ev));
+  // Return actual EV without artificial limits
+  return ev;
 }

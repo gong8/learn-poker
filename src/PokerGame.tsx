@@ -7,7 +7,7 @@ import Player from './components/Player';
 import Card from './components/Card';
 import GameControls from './components/GameControls';
 import GameSetup from './components/GameSetup';
-import PlayerAnalysisPanel from './components/PlayerAnalysis';
+import PlayerAnalysisPanel, { AdvancedAnalysisPanel } from './components/PlayerAnalysis';
 import HandSummaryComponent from './components/HandSummary';
 import SettingsModal from './components/SettingsModal';
 import HandHistory from './components/HandHistory';
@@ -273,16 +273,38 @@ const PokerGame: React.FC = () => {
               </div>
             </div>
           ) : isHumanTurn && humanPlayer ? (
-            <GameControls
-              validActions={validActions}
-              onAction={handlePlayerAction}
-              currentBet={Math.floor(Math.max(0, gameState.currentBet - humanPlayer.currentBet))}
-              playerChips={humanPlayer.chips}
-              minRaise={gameState.bigBlind}
-              potSize={gameState.pot}
-              isBigBlind={gameState.players.indexOf(humanPlayer) === gameState.bigBlindIndex}
-              isPreflop={gameState.phase === 'preflop'}
-            />
+            <>
+              <GameControls
+                validActions={validActions}
+                onAction={handlePlayerAction}
+                currentBet={Math.floor(Math.max(0, gameState.currentBet - humanPlayer.currentBet))}
+                playerChips={humanPlayer.chips}
+                minRaise={gameState.bigBlind}
+                potSize={gameState.pot}
+                isBigBlind={gameState.players.indexOf(humanPlayer) === gameState.bigBlindIndex}
+                isPreflop={gameState.phase === 'preflop'}
+              />
+              <AdvancedAnalysisPanel 
+                analysis={playerAnalysis || {
+                  handStrength: 0,
+                  potentialStrength: 0,
+                  currentHandRank: 'none',
+                  potOdds: 0,
+                  equity: 0,
+                  expectedValue: 0,
+                  recommendation: 'fold',
+                  confidence: 0,
+                  outs: 0,
+                  draws: [],
+                  cardCount: 0,
+                  winProbability: 0
+                }}
+                isVisible={!!(gameState.isGameActive && humanPlayer?.cards && humanPlayer.cards.length > 0)}
+                isLoading={isAnalyzing}
+                isActive={gameState.isGameActive && humanPlayer && !humanPlayer.isFolded && !humanPlayer.isEliminated}
+                gamePhase={gameState.phase}
+              />
+            </>
           ) : (
             <div className="waiting-modern">
               <div className="waiting-content">

@@ -312,17 +312,22 @@ function calculateAdvancedEV(
     return gameState.pot * equityResult.equity;
   }
   
-  // Basic EV calculation with clamping
+  // Proper EV calculation using equity-calculator
   const winAmount = gameState.pot + betToCall;
   const loseAmount = betToCall;
   
-  let ev = (equityResult.winProbability * winAmount) - ((1 - equityResult.winProbability) * loseAmount);
+  const ev = calculateExpectedValue(
+    equityResult.winProbability,
+    winAmount,
+    equityResult.loseProbability,
+    loseAmount
+  );
   
-  // Adjust for implied odds if we have draws
-  if (equityResult.draws.length > 0 && equityResult.outs > 4) {
-    const impliedOdds = calculateImpliedOdds(gameState.pot, betToCall, gameState.pot * 0.5);
-    const impliedBonus = Math.min(betToCall * 0.3, impliedOdds * 0.1);
-    ev += impliedBonus;
+  // Add implied odds bonus for strong draws
+  if (equityResult.draws.length > 0 && equityResult.outs > 8) {
+    const impliedOdds = calculateImpliedOdds(gameState.pot, betToCall, gameState.pot * 0.3);
+    const impliedBonus = Math.min(betToCall * 0.2, impliedOdds * 0.05);
+    return ev + impliedBonus;
   }
   
   return ev;

@@ -217,8 +217,13 @@ export const POSITION_ADJUSTMENTS = {
 };
 
 export function convertHandToString(rank1: Rank, rank2: Rank, suited: boolean): string {
-  // Sort ranks for consistent representation
-  const ranks = [rank1, rank2].sort((a, b) => {
+  // Convert 10 to T for consistent representation
+  const convertRank = (rank: Rank) => rank === '10' ? 'T' : rank;
+  const r1 = convertRank(rank1);
+  const r2 = convertRank(rank2);
+  
+  // Sort ranks for consistent representation (higher rank first)
+  const ranks = [r1, r2].sort((a, b) => {
     const order = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
     return order.indexOf(b) - order.indexOf(a);
   });
@@ -319,19 +324,45 @@ function getRankValue(rank: string): number {
 }
 
 export function shouldPushFold(handString: string, stackSizeBB: number, position: string = 'SB'): 'push' | 'call' | 'fold' {
-  // Adjust stack size based on position
-  const adjustment = (POSITION_ADJUSTMENTS as any)[position] || 1;
-  const adjustedStackSize = stackSizeBB * adjustment;
+  // Nash ranges are designed for SB vs BB situations
+  // For short stacks (≤15BB), premium pairs should always push regardless of position
+  let tightenFactor = 1.0;
+  
+  // For very short stacks, don't apply position tightening to premium hands
+  const isPremiumPair = ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', '77'].includes(handString);
+  const isVeryShortStack = stackSizeBB <= 15;
+  
+  if (isVeryShortStack && isPremiumPair) {
+    tightenFactor = 1.0; // No position adjustment for premium pairs with short stacks
+  } else {
+    switch (position) {
+      case 'BTN':
+      case 'SB':
+        tightenFactor = 1.0; // Standard ranges
+        break;
+      case 'CO':
+        tightenFactor = 0.9; // Tighten by 10% (reduced from 20%)
+        break;
+      case 'MP':
+        tightenFactor = 0.8; // Tighten by 20% (reduced from 40%)
+        break;
+      case 'UTG':
+        tightenFactor = 0.7; // Tighten by 30% (reduced from 60%)
+        break;
+      default:
+        tightenFactor = 0.8;
+    }
+  }
   
   // Check push range
   const pushRange = NASH_PUSH_RANGES.find(range => range.hand === handString);
-  if (pushRange && adjustedStackSize <= pushRange.maxStackSizeBB) {
+  if (pushRange && stackSizeBB <= (pushRange.maxStackSizeBB * tightenFactor)) {
     return 'push';
   }
   
   // Check call range
   const callRange = NASH_CALL_RANGES.find(range => range.hand === handString);
-  if (callRange && adjustedStackSize <= callRange.maxStackSizeBB) {
+  if (callRange && stackSizeBB <= (callRange.maxStackSizeBB * tightenFactor)) {
     return 'call';
   }
   
