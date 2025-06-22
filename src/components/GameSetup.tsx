@@ -11,9 +11,10 @@ interface BotDistribution {
 
 interface GameSetupProps {
   onStartGame: (botCount: number, botConfigs: BotBehavior[]) => void;
+  onOpenAnalyzer: () => void;
 }
 
-const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
+const GameSetup: React.FC<GameSetupProps> = ({ onStartGame, onOpenAnalyzer }) => {
   const [botCount, setBotCount] = useState(3);
   const [distribution, setDistribution] = useState<BotDistribution>({
     conservative: 1,
@@ -240,10 +241,17 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
           </div>
         </div>
 
-        <button className="start-game-btn-modern" onClick={handleStartGame}>
-          <span>Start Game</span>
-          <div className="btn-icon">▶</div>
-        </button>
+        <div className="action-buttons">
+          <button className="start-game-btn-modern" onClick={handleStartGame}>
+            <span>Start Game</span>
+            <div className="btn-icon">▶</div>
+          </button>
+          
+          <button className="hand-analyzer-btn-modern" onClick={onOpenAnalyzer}>
+            <span>🔍 Hand Analyzer</span>
+            <div className="analyzer-subtitle">Practice your decision making</div>
+          </button>
+        </div>
       </div>
     </div>
   );

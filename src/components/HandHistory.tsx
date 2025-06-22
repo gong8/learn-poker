@@ -110,6 +110,12 @@ const HandHistory: React.FC<HandHistoryProps> = ({ history, isOpen, onClose }) =
             </div>
           )}
         </div>
+
+        <div className="hand-history-footer">
+          <button className="save-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

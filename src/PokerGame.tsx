@@ -7,6 +7,7 @@ import Player from './components/Player';
 import Card from './components/Card';
 import GameControls from './components/GameControls';
 import GameSetup from './components/GameSetup';
+import HandAnalyzer from './components/HandAnalyzer';
 import PlayerAnalysisPanel, { AdvancedAnalysisPanel } from './components/PlayerAnalysis';
 import HandSummaryComponent from './components/HandSummary';
 import SettingsModal from './components/SettingsModal';
@@ -23,6 +24,7 @@ const PokerGame: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showEliminationModal, setShowEliminationModal] = useState(false);
+  const [currentView, setCurrentView] = useState<'setup' | 'game' | 'analyzer'>('setup');
 
   const startGame = (botCount: number, botConfigs: BotBehavior[]) => {
     const initialState = createInitialGameState(1, botCount, botConfigs);
@@ -30,11 +32,21 @@ const PokerGame: React.FC = () => {
     setGameState(newGameState);
     setShowdown(false);
     setShowEliminationModal(false);
+    setCurrentView('game');
   };
 
   const returnToStart = () => {
     setGameState(null);
     setShowEliminationModal(false);
+    setCurrentView('setup');
+  };
+
+  const openHandAnalyzer = () => {
+    setCurrentView('analyzer');
+  };
+
+  const backToSetup = () => {
+    setCurrentView('setup');
   };
 
   const startNewRound = () => {
@@ -134,8 +146,16 @@ const PokerGame: React.FC = () => {
     }
   }, [gameState, showEliminationModal]);
 
+  if (currentView === 'setup') {
+    return <GameSetup onStartGame={startGame} onOpenAnalyzer={openHandAnalyzer} />;
+  }
+
+  if (currentView === 'analyzer') {
+    return <HandAnalyzer onBack={backToSetup} />;
+  }
+
   if (!gameState) {
-    return <GameSetup onStartGame={startGame} />;
+    return <GameSetup onStartGame={startGame} onOpenAnalyzer={openHandAnalyzer} />;
   }
 
   const humanPlayer = gameState.players.find(p => !p.isBot);
