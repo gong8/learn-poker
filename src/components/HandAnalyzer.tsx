@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, Rank, Suit, PlayerAnalysis } from '../types';
 import { analyzePlayer } from '../advanced-poker-analysis';
 import { createInitialGameState } from '../game-engine';
@@ -281,23 +281,25 @@ const HandAnalyzer: React.FC<HandAnalyzerProps> = ({ onBack }) => {
               <div className="settings-section">
                 <h3>Analysis Settings</h3>
                 <div className="setting-item">
-                  <label className="checkbox-label">
+                  <label>
                     <input
                       type="checkbox"
                       checked={settings.showAdvancedAnalysis}
                       onChange={(e) => updateSetting('showAdvancedAnalysis', e.target.checked)}
                     />
+                    <span className="checkmark"></span>
                     <span>Show Advanced Analysis</span>
                   </label>
                 </div>
 
                 <div className="setting-item">
-                  <label className="checkbox-label">
+                  <label>
                     <input
                       type="checkbox"
                       checked={settings.darkMode}
                       onChange={(e) => updateSetting('darkMode', e.target.checked)}
                     />
+                    <span className="checkmark"></span>
                     <span>Dark Mode</span>
                   </label>
                 </div>
@@ -318,8 +320,52 @@ interface CardSelectorProps {
 
 const CardSelector: React.FC<CardSelectorProps> = ({ onSelect, usedCards, currentCard }) => {
   const [showSelector, setShowSelector] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const ranks: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+
+  const calculateModalPosition = () => {
+    if (!buttonRef.current) return;
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const modalWidth = 420; // Approximate modal width
+    const modalHeight = 300; // Approximate modal height
+    
+    let top = buttonRect.bottom + 8;
+    let left = buttonRect.left;
+    
+    // Check if modal would go off right edge of screen
+    if (left + modalWidth > window.innerWidth) {
+      left = window.innerWidth - modalWidth - 16;
+    }
+    
+    // Check if modal would go off left edge of screen
+    if (left < 16) {
+      left = 16;
+    }
+    
+    // Check if modal would go off bottom edge of screen
+    if (top + modalHeight > window.innerHeight) {
+      top = buttonRect.top - modalHeight - 8;
+    }
+    
+    // Final check - if still off screen, center it
+    if (top < 16) {
+      top = (window.innerHeight - modalHeight) / 2;
+      left = (window.innerWidth - modalWidth) / 2;
+    }
+    
+    setModalPosition({ top, left });
+  };
+
+  const handleToggleSelector = () => {
+    if (!showSelector) {
+      calculateModalPosition();
+    }
+    setShowSelector(!showSelector);
+  };
 
   const handleCardSelect = (rank: Rank, suit: Suit) => {
     const card: Card = { rank, suit };
@@ -340,51 +386,80 @@ const CardSelector: React.FC<CardSelectorProps> = ({ onSelect, usedCards, curren
     return suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black';
   };
 
+  // Close modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node) && 
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        setShowSelector(false);
+      }
+    };
+
+    if (showSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSelector]);
+
   return (
     <div className="card-selector">
       <button 
+        ref={buttonRef}
         className="select-card-btn"
-        onClick={() => setShowSelector(!showSelector)}
+        onClick={handleToggleSelector}
       >
         {currentCard ? `${currentCard.rank}${getSuitSymbol(currentCard.suit)}` : 'Select Card'}
       </button>
 
       {showSelector && (
-        <div className="card-picker">
-          <div className="card-picker-content">
-            <div className="card-picker-header">
-              <h3>Select Card</h3>
+        <>
+          <div className="card-picker-overlay" onClick={() => setShowSelector(false)} />
+          <div 
+            ref={modalRef}
+            className="card-picker"
+            style={{
+              position: 'fixed',
+              top: `${modalPosition.top}px`,
+              left: `${modalPosition.left}px`,
+              transform: 'none'
+            }}
+          >
+            <div className="card-picker-content">
+              <div className="card-picker-header">
+                <h3>Select Card</h3>
+                <button 
+                  className="close-picker-btn-x"
+                  onClick={() => setShowSelector(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="ranks-row">
+                {ranks.map(rank => (
+                  <div key={rank} className="rank-column">
+                    <div className="rank-header">{rank}</div>
+                    {suits.map(suit => {
+                      const card: Card = { rank, suit };
+                      const isUsed = usedCards(card);
+                      return (
+                        <button
+                          key={`${rank}-${suit}`}
+                          className={`suit-btn ${getSuitColor(suit)} ${isUsed ? 'disabled' : ''}`}
+                          onClick={() => !isUsed && handleCardSelect(rank, suit)}
+                          disabled={isUsed}
+                          title={isUsed ? 'Card already in use' : `${rank} of ${suit}`}
+                        >
+                          {getSuitSymbol(suit)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="ranks-row">
-              {ranks.map(rank => (
-                <div key={rank} className="rank-column">
-                  <div className="rank-header">{rank}</div>
-                  {suits.map(suit => {
-                    const card: Card = { rank, suit };
-                    const isUsed = usedCards(card);
-                    return (
-                      <button
-                        key={`${rank}-${suit}`}
-                        className={`suit-btn ${getSuitColor(suit)} ${isUsed ? 'disabled' : ''}`}
-                        onClick={() => !isUsed && handleCardSelect(rank, suit)}
-                        disabled={isUsed}
-                        title={isUsed ? 'Card already in use' : `${rank} of ${suit}`}
-                      >
-                        {getSuitSymbol(suit)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            <button 
-              className="close-picker-btn"
-              onClick={() => setShowSelector(false)}
-            >
-              Done
-            </button>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
