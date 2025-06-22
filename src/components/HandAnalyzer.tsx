@@ -112,12 +112,19 @@ const HandAnalyzer: React.FC<HandAnalyzerProps> = ({ onBack }) => {
   return (
     <div className="hand-analyzer">
       <div className="analyzer-header">
-        <button className="back-btn" onClick={onBack}>
-          ← Back to Game
-        </button>
-        <div className="analyzer-title">
-          <h1>Hand Analyzer</h1>
-          <p>Select your cards and board to get strategic analysis</p>
+        <div className="header-left">
+          <button className="back-btn" onClick={onBack}>
+            ← Back to Game
+          </button>
+          <div className="analyzer-title">
+            <h1>Hand Analyzer</h1>
+            <p>Select your cards and board to get strategic analysis</p>
+          </div>
+        </div>
+        <div className="header-actions">
+          <button className="header-btn settings-btn" onClick={() => setShowSettings(true)}>
+            ⚙️ Settings
+          </button>
         </div>
       </div>
 
@@ -126,15 +133,17 @@ const HandAnalyzer: React.FC<HandAnalyzerProps> = ({ onBack }) => {
           <div className="analyzer-controls">
             <div className="control-section">
               <label>Number of Opponents:</label>
-              <select 
-                value={numOpponents} 
-                onChange={(e) => setNumOpponents(Number(e.target.value))}
-                className="opponents-select"
-              >
+              <div className="opponents-buttons">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                  <option key={num} value={num}>{num}</option>
+                  <button
+                    key={num}
+                    className={`opponent-btn ${numOpponents === num ? 'active' : ''}`}
+                    onClick={() => setNumOpponents(num)}
+                  >
+                    {num}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             <div className="control-section">
@@ -154,10 +163,6 @@ const HandAnalyzer: React.FC<HandAnalyzerProps> = ({ onBack }) => {
 
             <button className="clear-btn" onClick={clearAllCards}>
               Clear All Cards
-            </button>
-
-            <button className="settings-btn" onClick={() => setShowSettings(true)}>
-              ⚙️ Settings
             </button>
           </div>
 
@@ -244,52 +249,58 @@ const HandAnalyzer: React.FC<HandAnalyzerProps> = ({ onBack }) => {
       </div>
 
       {showSettings && (
-        <div className="settings-modal">
-          <div className="settings-modal-content">
+        <div className="settings-modal-backdrop" onClick={() => setShowSettings(false)}>
+          <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
             <div className="settings-modal-header">
               <h2>Hand Analyzer Settings</h2>
               <button 
-                className="close-settings-btn"
+                className="close-modal-btn"
                 onClick={() => setShowSettings(false)}
               >
                 ×
               </button>
             </div>
             
-            <div className="settings-sections">
-              <div className="setting-section">
-                <label>Card Size:</label>
-                <select 
-                  value={settings.cardSize} 
-                  onChange={(e) => updateSetting('cardSize', e.target.value as 'small' | 'medium' | 'large')}
-                  className="setting-select"
-                >
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
+            <div className="settings-modal-content">
+              <div className="settings-section">
+                <h3>Display Settings</h3>
+                <div className="setting-item">
+                  <label>Card Size:</label>
+                  <select 
+                    value={settings.cardSize} 
+                    onChange={(e) => updateSetting('cardSize', e.target.value as 'small' | 'medium' | 'large')}
+                    className="setting-input"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="setting-section">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={settings.showAdvancedAnalysis}
-                    onChange={(e) => updateSetting('showAdvancedAnalysis', e.target.checked)}
-                  />
-                  Show Advanced Analysis
-                </label>
-              </div>
+              <div className="settings-section">
+                <h3>Analysis Settings</h3>
+                <div className="setting-item">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={settings.showAdvancedAnalysis}
+                      onChange={(e) => updateSetting('showAdvancedAnalysis', e.target.checked)}
+                    />
+                    <span>Show Advanced Analysis</span>
+                  </label>
+                </div>
 
-              <div className="setting-section">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={settings.darkMode}
-                    onChange={(e) => updateSetting('darkMode', e.target.checked)}
-                  />
-                  Dark Mode
-                </label>
+                <div className="setting-item">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={settings.darkMode}
+                      onChange={(e) => updateSetting('darkMode', e.target.checked)}
+                    />
+                    <span>Dark Mode</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -341,6 +352,9 @@ const CardSelector: React.FC<CardSelectorProps> = ({ onSelect, usedCards, curren
       {showSelector && (
         <div className="card-picker">
           <div className="card-picker-content">
+            <div className="card-picker-header">
+              <h3>Select Card</h3>
+            </div>
             <div className="ranks-row">
               {ranks.map(rank => (
                 <div key={rank} className="rank-column">
@@ -367,7 +381,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({ onSelect, usedCards, curren
               className="close-picker-btn"
               onClick={() => setShowSelector(false)}
             >
-              Close
+              Done
             </button>
           </div>
         </div>
